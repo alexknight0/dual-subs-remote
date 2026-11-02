@@ -169,6 +169,16 @@ def main():
         check("with the panel open the line moves to the top", top < 5, (top, off))
         fit = page.evaluate("(() => { const m = document.getElementById('main'); return [m.scrollHeight, m.clientHeight, getComputedStyle(m).scrollbarWidth]; })()")
         check("a typical word fits without scrolling, and no scroll bar ever shows", fit[0] <= fit[1] and fit[2] == "none", fit)
+        # Android's URL bar showing/hiding (and pull-to-refresh) changes the visible height:
+        # the page must follow it and never scroll as a whole.
+        PAGE_FIT = "[document.documentElement.scrollHeight, innerHeight, Math.round(document.getElementById('dock').getBoundingClientRect().bottom)]"
+        for height in (700, 900, 844):
+            page.set_viewport_size({"width": 390, "height": height})
+            page.wait_for_timeout(100)
+            doc_h, inner, dock_bottom = page.evaluate(PAGE_FIT)
+            check(f"at {height}px tall: no page scroll, dock at the bottom", doc_h <= inner and dock_bottom == inner, (doc_h, inner, dock_bottom))
+        page.evaluate("window.scrollTo(0, 500)")
+        check("the page itself can't be scrolled", page.evaluate("scrollY") == 0, page.evaluate("scrollY"))
         check("picked word highlighted", page.eval_on_selector("#line .w.unknown", "e => e.classList.contains('picked')"))
         on = page.eval_on_selector_all("#pMarks .on", "els => els.map((e) => e.dataset.state)")
         check("current state highlighted", on == ["unknown"], on)

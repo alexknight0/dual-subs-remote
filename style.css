@@ -24,12 +24,18 @@ html,
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden; /* only <main> scrolls */
 }
 
+/* Pinned to the visible screen rather than 100dvh: after Android Chrome's pull-to-refresh
+   dvh can come back taller than the screen (with the URL bar showing), making the whole
+   page scroll. A fixed element always tracks the visible area. */
 body {
+  position: fixed;
+  inset: 0;
+  height: auto; /* from inset, not 100% of <html> (which can be the large viewport) */
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   font: 16px/1.45 system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   color: var(--text);
   background: var(--bg);
