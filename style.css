@@ -85,9 +85,15 @@ main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none; /* long dictionary entries still scroll, without a bar */
   padding: 0 var(--pad) var(--pad);
   display: flex;
   flex-direction: column;
+}
+
+/* Sign out only while no word is open, to leave the panel room. */
+main:has(#panel:not([hidden])) footer {
+  display: none;
 }
 
 #title {
@@ -171,8 +177,8 @@ main:has(#panel:not([hidden])) #now {
 
 /* Word panel */
 .panel {
-  margin-top: 18px;
-  padding: 12px 14px;
+  margin-top: 12px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--card);
@@ -203,12 +209,16 @@ main:has(#panel:not([hidden])) #now {
 }
 
 .icon {
-  margin-left: auto;
   padding: 4px 10px;
   border: none;
   background: none;
   font-size: 18px;
   color: var(--muted);
+}
+
+.panel-head .link {
+  margin: 0 0 0 auto;
+  font-size: 15px;
 }
 
 .marks {

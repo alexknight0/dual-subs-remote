@@ -167,6 +167,8 @@ def main():
         check("panel shown", page.is_visible("#panel") and page.text_content("#pWord") == "적")
         top, off = page.evaluate(MIDDLE)
         check("with the panel open the line moves to the top", top < 5, (top, off))
+        fit = page.evaluate("(() => { const m = document.getElementById('main'); return [m.scrollHeight, m.clientHeight, getComputedStyle(m).scrollbarWidth]; })()")
+        check("a typical word fits without scrolling, and no scroll bar ever shows", fit[0] <= fit[1] and fit[2] == "none", fit)
         check("picked word highlighted", page.eval_on_selector("#line .w.unknown", "e => e.classList.contains('picked')"))
         on = page.eval_on_selector_all("#pMarks .on", "els => els.map((e) => e.dataset.state)")
         check("current state highlighted", on == ["unknown"], on)
