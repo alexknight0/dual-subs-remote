@@ -93,7 +93,6 @@ function send(type, args = {}) {
 $('play').addEventListener('click', () => send('playPause'));
 $('prev').addEventListener('click', () => send('prev'));
 $('next').addEventListener('click', () => send('next'));
-$('reveal').addEventListener('click', () => send('reveal'));
 $('pClose').addEventListener('click', () => send('unpick'));
 $('pAsk').addEventListener('click', () => send('ask'));
 for (const b of $('pMarks').querySelectorAll('button')) {

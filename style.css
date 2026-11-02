@@ -384,11 +384,11 @@ li.best {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 88px;
+  min-height: 120px;
   border: 1px solid #3a3a3a;
-  border-radius: 14px;
+  border-radius: 16px;
   background: #262626;
-  font-size: 32px;
+  font-size: 40px;
   line-height: 1.1;
 }
 
@@ -397,13 +397,13 @@ li.best {
 }
 
 .dock small {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--muted);
 }
 
 .dock .play {
   flex: 1.4;
-  font-size: 40px;
+  font-size: 52px;
 }
 
 footer {

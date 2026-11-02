@@ -131,7 +131,7 @@ def main():
         check("...without sending anything", sent() == [], sent())
 
         print("3/4: controls")
-        for btn, kind in (("#play", "playPause"), ("#prev", "prev"), ("#next", "next"), ("#reveal", "reveal")):
+        for btn, kind in (("#play", "playPause"), ("#prev", "prev"), ("#next", "next")):
             page.click(btn)
             last = sent()[-1]
             check(f"{btn} sends {kind}", last["type"] == kind and last["at"] == {".sv": "timestamp"} and last["id"], last)
@@ -140,7 +140,9 @@ def main():
         ids = [s["id"] for s in sent()]
         check("each command has its own id", len(set(ids)) == len(ids))
         box = page.locator("#dock").bounding_box()
-        check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1 and box["height"] >= 88, box)
+        check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1, box)
+        sizes = page.eval_on_selector_all(".dock .buttons button", "els => els.map((e) => [e.id, Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])")
+        check("three big buttons, no EN button", [s[0] for s in sizes] == ["prev", "play", "next"] and all(h >= 120 and w >= 100 for _, w, h in sizes), sizes)
         centred = page.evaluate("""(() => { const l = document.getElementById('line').getBoundingClientRect(); const ws = [...document.querySelectorAll('#line .w')].map((e) => e.getBoundingClientRect()); return [ws[0].left - l.left, l.right - ws.at(-1).right]; })()""")
         check("line centred", abs(centred[0] - centred[1]) < 20, centred)
         check("slider shows the length", page.text_content("#tEnd") == "1:02:00", page.text_content("#tEnd"))
