@@ -102,6 +102,55 @@ $('en').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Seek slider. The extension sends the position (t) with each state update, not every
+// second, so the slider moves on from it locally while playing.
+const SEEK_SETTLE_MS = 1500; // after a seek, ignore states that may predate it
+let dragging = false;
+let seekSent = null; // { ms, at } of the last seek from here
+
+function formatTime(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60));
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${mm.padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
+}
+
+function position() {
+  if (!state || state.t === null || state.t === undefined) return null;
+  const since = (at) => (state.playing ? Date.now() - at : 0);
+  const pos = seekSent && Date.now() - seekSent.at < SEEK_SETTLE_MS ? seekSent.ms + since(seekSent.at) : state.t + since(stateAt);
+  return Math.min(pos, state.d || pos);
+}
+
+function renderSeek() {
+  const d = connected() ? state.d : null;
+  $('seekRow').hidden = !d;
+  if (!d || dragging) return;
+  const input = $('seek');
+  input.max = String(d);
+  const pos = position() ?? 0;
+  input.value = String(pos);
+  $('tNow').textContent = formatTime(pos);
+  $('tEnd').textContent = formatTime(d);
+}
+
+$('seek').addEventListener('input', () => {
+  dragging = true;
+  $('seekRow').classList.add('dragging');
+  $('tNow').textContent = formatTime(Number($('seek').value));
+});
+$('seek').addEventListener('change', () => {
+  const ms = Number($('seek').value);
+  dragging = false;
+  $('seekRow').classList.remove('dragging');
+  seekSent = { ms, at: Date.now() };
+  send('seek', { ms });
+  renderSeek();
+});
+setInterval(renderSeek, 500);
+
+// ---------------------------------------------------------------------------
 // Rendering
 const make = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -166,6 +215,7 @@ function render() {
   en.title = line?.hidden ? 'Tap to show (on this phone only)' : '';
 
   renderPanel(live);
+  renderSeek();
 }
 
 function renderPanel(live) {

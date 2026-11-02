@@ -332,13 +332,40 @@ li.best {
   margin-top: 10px;
 }
 
-/* Controls dock at the bottom (thumb reach). */
+/* Controls dock at the bottom (thumb reach): seek slider, then the buttons. */
 .dock {
   display: flex;
-  gap: 10px;
-  padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px var(--pad) calc(10px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: #181818;
+}
+
+.dock .buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.seek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.seek input {
+  flex: 1;
+  height: 36px; /* big touch target */
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.seek.dragging #tNow {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .dock button {

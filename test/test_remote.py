@@ -42,6 +42,8 @@ STATE = {
     "movieId": "1",
     "title": "Tale of the Nine Tailed · E3",
     "playing": True,
+    "t": 600000,
+    "d": 3720000,
     "line": {
         "key": "36000",
         "parts": [
@@ -137,6 +139,20 @@ def main():
         check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1 and box["height"] >= 88, box)
         centred = page.evaluate("""(() => { const l = document.getElementById('line').getBoundingClientRect(); const ws = [...document.querySelectorAll('#line .w')].map((e) => e.getBoundingClientRect()); return [ws[0].left - l.left, l.right - ws.at(-1).right]; })()""")
         check("line centred", abs(centred[0] - centred[1]) < 20, centred)
+        check("slider shows the length", page.text_content("#tEnd") == "1:02:00", page.text_content("#tEnd"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
+        page.wait_for_timeout(2200)
+        now = page.text_content("#tNow")
+        check("...and moves on while playing", now in ("10:01", "10:02", "10:03"), now)  # display ticks every 0.5 s
+        seek = page.locator("#seek").bounding_box()
+        page.mouse.click(seek["x"] + seek["width"] / 2, seek["y"] + seek["height"] / 2)
+        last = sent()[-1]
+        check("dragging it sends seek", last["type"] == "seek" and abs(last["ms"] - 1860000) < 60000, last)
+        check("...and shows the new time straight away", page.text_content("#tNow").startswith("3"), page.text_content("#tNow"))
+        check("slider is a big touch target", seek["height"] >= 36, seek)
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'d': None}, ensure_ascii=False)})")
+        check("no slider without a length", page.is_hidden("#seekRow"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
 
         print("4/4: word panel")
         page.click("#line .w.unknown")

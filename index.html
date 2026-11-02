@@ -60,10 +60,17 @@
     </main>
 
     <nav id="dock" class="dock" hidden>
-      <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
-      <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>
-      <button id="next" type="button" aria-label="Next line">⏭<small>line</small></button>
-      <button id="reveal" type="button" aria-label="Show the English on the TV">EN<small>on TV</small></button>
+      <div id="seekRow" class="seek">
+        <span id="tNow">0:00</span>
+        <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek" />
+        <span id="tEnd">0:00</span>
+      </div>
+      <div class="buttons">
+        <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
+        <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>
+        <button id="next" type="button" aria-label="Next line">⏭<small>line</small></button>
+        <button id="reveal" type="button" aria-label="Show the English on the TV">EN<small>on TV</small></button>
+      </div>
     </nav>
 
     <script type="module" src="app.js"></script>
