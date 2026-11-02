@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#141414" />
+    <title>Dual Subs remote</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="home-link" href="../home/" aria-label="Home" title="Home"
+        ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg
+      ></a>
+      <h1>Dual Subs remote</h1>
+      <button id="version" type="button" class="version" data-state="checking" aria-label="Checking for updates…" title="Checking for updates…"><i></i><span></span></button>
+      <span id="status" class="status"></span>
+    </header>
+
+    <section id="signin" class="center" hidden>
+      <p>Control Netflix Dual Subs on your computer from here: play and pause, jump between lines, and look up words.</p>
+      <button id="signinBtn" class="primary">Sign in with Google</button>
+      <p id="signinError" class="muted"></p>
+    </section>
+
+    <main id="main" hidden>
+      <div id="waiting" class="center muted" hidden>
+        Open a Netflix episode on your computer (signed in to Dual Subs with the same account).
+      </div>
+      <div id="now" hidden>
+        <p id="title" class="muted"></p>
+        <div id="line" class="line"></div>
+        <button id="en" class="en" type="button"></button>
+      </div>
+
+      <div id="panel" class="panel" hidden>
+        <div class="panel-head">
+          <span id="pWord" class="p-word"></span>
+          <span id="pForm" class="muted"></span>
+          <span id="pState" class="p-state"></span>
+          <button id="pClose" class="icon" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="pMarks" class="marks">
+          <button data-state="known" type="button">Known</button>
+          <button data-state="unknown" type="button">Unknown</button>
+          <button data-state="learning" type="button">Learning</button>
+        </div>
+        <div id="pAuto" class="note" hidden></div>
+        <div id="pAi" class="ai" hidden></div>
+        <button id="pAsk" class="ask" type="button">Ask AI what it's doing here</button>
+        <div id="pGrammar"></div>
+        <div id="pDict"></div>
+        <a id="pLink" class="link" target="_blank" rel="noopener">Open in 사전 ↗</a>
+      </div>
+
+      <footer id="foot" class="muted" hidden><button id="signout" class="linkish" type="button">Sign out</button></footer>
+    </main>
+
+    <nav id="dock" class="dock" hidden>
+      <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
+      <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>
+      <button id="next" type="button" aria-label="Next line">⏭<small>line</small></button>
+      <button id="reveal" type="button" aria-label="Show the English on the TV">EN<small>on TV</small></button>
+    </nav>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

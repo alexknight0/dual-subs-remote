@@ -1,0 +1,446 @@
+:root {
+  --bg: #141414;
+  --card: #1f1f1f;
+  --line: #333;
+  --text: #eee;
+  --muted: #9a9a9a;
+  --accent: #e50914;
+  --unknown: #ffd65c;
+  --learning: #7ee2b8;
+  --name: #8ab4f8;
+  --pad: 16px;
+  color-scheme: dark;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  font: 16px/1.45 system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--pad) 6px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.status {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.status.on::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #2da44e;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.center {
+  margin: auto;
+  max-width: 360px;
+  padding: var(--pad);
+  text-align: center;
+}
+
+main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--pad) var(--pad);
+  display: flex;
+  flex-direction: column;
+}
+
+#title {
+  margin: 4px 0 8px;
+  font-size: 13px;
+}
+
+/* The line on screen: tap a word to look it up (and pause). */
+.line {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.line .w {
+  padding: 0 1px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.line .w.unknown {
+  color: var(--unknown);
+}
+
+.line .w.learning {
+  color: var(--learning);
+  text-decoration: underline dotted 2px;
+  text-underline-offset: 0.2em;
+}
+
+.line .w.name {
+  color: var(--name);
+}
+
+.line .w.picked {
+  background: #3a3a3a;
+  outline: 2px solid #666;
+}
+
+.en {
+  display: block;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 18px;
+  white-space: pre-line;
+  color: #ddd;
+}
+
+.en.blurred {
+  filter: blur(6px);
+}
+
+.primary {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Word panel */
+.panel {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.p-word {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.p-state {
+  font-size: 13px;
+  color: #bbb;
+}
+
+.p-state.unknown {
+  color: var(--unknown);
+}
+
+.p-state.learning {
+  color: var(--learning);
+}
+
+.icon {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.marks {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+
+.marks button {
+  flex: 1;
+  padding: 10px 0;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #2a2a2a;
+}
+
+.marks button.on[data-state='known'] {
+  background: #2f4f37;
+  border-color: #4f8a5c;
+}
+
+.marks button.on[data-state='unknown'] {
+  background: #4d4220;
+  border-color: #a68b2c;
+}
+
+.marks button.on[data-state='learning'] {
+  background: #20453a;
+  border-color: #3e8f73;
+}
+
+.ask {
+  width: 100%;
+  margin: 6px 0;
+  padding: 10px 0;
+  border: 1px solid #3c5a8a;
+  border-radius: 8px;
+  background: #1d2a3d;
+  color: #cfe0ff;
+}
+
+.ask:disabled {
+  opacity: 0.6;
+}
+
+.ai,
+.note,
+.grammar {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.ai {
+  background: rgba(138, 180, 248, 0.08);
+  border-left: 3px solid var(--name);
+}
+
+.ai b {
+  color: #fff;
+}
+
+.note {
+  background: #2a2618;
+  color: #e8d9a8;
+}
+
+.grammar {
+  background: #222b22;
+}
+
+.grammar a,
+.link {
+  color: var(--name);
+  text-decoration: none;
+}
+
+.tag {
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #444;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.meta {
+  margin-top: 10px;
+  color: #bbb;
+}
+
+.meta b {
+  color: var(--text);
+}
+
+.level {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.other {
+  opacity: 0.55;
+}
+
+ol {
+  margin: 4px 0 0;
+  padding-left: 22px;
+}
+
+li {
+  margin: 3px 0;
+}
+
+li.best {
+  border-left: 3px solid var(--name);
+  padding-left: 6px;
+  margin-left: -9px;
+}
+
+.ko {
+  color: #ccc;
+}
+
+.link {
+  display: inline-block;
+  margin-top: 10px;
+}
+
+/* Controls dock at the bottom (thumb reach). */
+.dock {
+  display: flex;
+  gap: 10px;
+  padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: #181818;
+}
+
+.dock button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  background: #262626;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.dock button:active {
+  background: #333;
+}
+
+.dock small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dock .play {
+  flex: 1.4;
+  font-size: 30px;
+}
+
+footer {
+  margin-top: auto;
+  padding: 24px 0 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.linkish {
+  border: none;
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+/* Version light (see the github-pages-site skill) */
+.version {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  font-size: 0.8rem;
+}
+
+.version i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+}
+
+.version[data-state='ok'] i {
+  background: #2da44e;
+  border-color: #2da44e;
+}
+
+.version[data-state='stale'] {
+  border: 1px solid #d97706;
+  color: #d97706;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+}
+
+.version[data-state='stale'] i {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.version[data-state='updating'] i {
+  border-color: #d97706;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Home link: desktop browser tabs only (see the github-pages-site skill). */
+.home-link {
+  display: none;
+  color: var(--muted);
+}
+
+.home-link svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+@media (pointer: fine) and (display-mode: browser) {
+  .home-link {
+    display: inline-flex;
+  }
+}
