@@ -5,7 +5,7 @@
 // repo). Only Alex's account can read or write (database.rules.json there).
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js';
 import {
-  getAuth,
+  initializeAuth, browserLocalPersistence, browserPopupRedirectResolver,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
@@ -21,7 +21,10 @@ const app = initializeApp({
   appId: '1:729739067887:web:134e9a9668a73c6b69f61a',
   databaseURL: 'https://dual-subs-2b0407-default-rtdb.asia-southeast1.firebasedatabase.app',
 });
-const auth = getAuth(app);
+// Sign-in is kept in localStorage, not Firebase's default IndexedDB: all of Alex's sites share
+// one origin and so one sign-in database, and Firebase waits forever if another site's page
+// blocks opening it (seen on Android 2026-11-02: blank page until site data was cleared).
+const auth = initializeAuth(app, { persistence: browserLocalPersistence, popupRedirectResolver: browserPopupRedirectResolver });
 const db = getDatabase(app);
 const $ = (id) => document.getElementById(id);
 

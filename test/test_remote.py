@@ -20,6 +20,7 @@ FAKE_APP = "export const initializeApp = (c) => ({ c });"
 FAKE_AUTH = """
 const listeners = [];
 let user = null;
+export const initializeAuth = (app) => getAuth(app); export const browserLocalPersistence = {}; export const browserPopupRedirectResolver = {};
 export const getAuth = () => ({});
 export class GoogleAuthProvider {}
 export const onAuthStateChanged = (a, cb) => { listeners.push(cb); cb(user); return () => {}; };
