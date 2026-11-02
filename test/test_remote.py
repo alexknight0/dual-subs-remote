@@ -134,7 +134,9 @@ def main():
         ids = [s["id"] for s in sent()]
         check("each command has its own id", len(set(ids)) == len(ids))
         box = page.locator("#dock").bounding_box()
-        check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1 and box["height"] >= 64, box)
+        check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1 and box["height"] >= 88, box)
+        centred = page.evaluate("""(() => { const l = document.getElementById('line').getBoundingClientRect(); const ws = [...document.querySelectorAll('#line .w')].map((e) => e.getBoundingClientRect()); return [ws[0].left - l.left, l.right - ws.at(-1).right]; })()""")
+        check("line centred", abs(centred[0] - centred[1]) < 20, centred)
 
         print("4/4: word panel")
         page.click("#line .w.unknown")
