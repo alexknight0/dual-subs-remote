@@ -42,6 +42,7 @@ let shownLineKey = null;
 // ---------------------------------------------------------------------------
 // Sign-in
 onAuthStateChanged(auth, (user) => {
+  $('boot').hidden = true;
   for (const u of unsubs) u();
   unsubs = [];
   uid = user ? user.uid : null;
