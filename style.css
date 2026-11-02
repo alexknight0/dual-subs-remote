@@ -96,6 +96,16 @@ main {
   text-align: center;
 }
 
+/* The line sits in the middle of the screen, and moves to the top when a word's panel
+   opens so the panel fits under it. */
+#now {
+  margin: auto 0;
+}
+
+main:has(#panel:not([hidden])) #now {
+  margin: 0;
+}
+
 /* The line on screen: tap a word to look it up (and pause). */
 .line {
   font-size: 26px;
@@ -397,7 +407,6 @@ li.best {
 }
 
 footer {
-  margin-top: auto;
   padding: 24px 0 0;
   text-align: center;
   font-size: 13px;

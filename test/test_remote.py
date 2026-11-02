@@ -122,6 +122,9 @@ def main():
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
         check("status shows playing", page.text_content("#status") == "Playing" and page.text_content("#play") == "⏸")
         check("title shown", "Nine Tailed" in page.text_content("#title"))
+        MIDDLE = """(() => { const m = document.getElementById('main').getBoundingClientRect(); const n = document.getElementById('now').getBoundingClientRect(); return [n.top - m.top, (n.top + n.bottom) / 2 - (m.top + m.bottom) / 2]; })()"""
+        top, off = page.evaluate(MIDDLE)
+        check("line centred vertically", abs(off) < 40, (top, off))
         check("English blurred like on the TV", "blurred" in page.get_attribute("#en", "class"))
         page.click("#en")
         check("tapping it shows it on the phone", "blurred" not in page.get_attribute("#en", "class"))
@@ -160,6 +163,8 @@ def main():
         check("tapping a word picks it", sent()[-1] | {"id": 0} == {"id": 0, "type": "pick", "c": 36000, "i": 8, "at": {".sv": "timestamp"}}, sent()[-1])
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")
         check("panel shown", page.is_visible("#panel") and page.text_content("#pWord") == "적")
+        top, off = page.evaluate(MIDDLE)
+        check("with the panel open the line moves to the top", top < 5, (top, off))
         check("picked word highlighted", page.eval_on_selector("#line .w.unknown", "e => e.classList.contains('picked')"))
         on = page.eval_on_selector_all("#pMarks .on", "els => els.map((e) => e.dataset.state)")
         check("current state highlighted", on == ["unknown"], on)
