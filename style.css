@@ -458,9 +458,10 @@ footer {
   }
 }
 
-/* Home link: desktop browser tabs only (see the github-pages-site skill). */
+/* Home link to /home/, on every device: in an installed app Android opens the installed
+   Home app. Bigger tap area on touch screens without changing the layout. */
 .home-link {
-  display: none;
+  display: inline-flex;
   color: var(--muted);
 }
 
@@ -470,8 +471,9 @@ footer {
   fill: currentColor;
 }
 
-@media (pointer: fine) and (display-mode: browser) {
+@media (pointer: coarse) {
   .home-link {
-    display: inline-flex;
+    padding: 9px;
+    margin: -9px;
   }
 }
