@@ -294,60 +294,18 @@ setInterval(() => {
 }, 3000);
 
 // ---------------------------------------------------------------------------
-// Version check (see the github-pages-site skill). VERSION is the copy that's running;
-// version.js fetched with no-store is what GitHub Pages serves now.
-const APP_FILES = ['./', 'index.html', 'app.js', 'version.js', 'style.css', 'manifest.webmanifest'];
-const versionBtn = $('version');
-let latestVersion = null;
-
-function formatVersion(v) {
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-}
-
-function setVersionState(s) {
-  const labels = {
-    checking: 'Checking for updates…',
-    ok: `Up to date (version ${formatVersion(VERSION)})`,
-    stale: `Update available: running ${formatVersion(VERSION)}, latest is ${formatVersion(latestVersion)}. Tap to update.`,
-    unknown: `Couldn't check for updates (offline?). Running ${formatVersion(VERSION)}.`,
-    updating: 'Updating…',
-  };
-  versionBtn.dataset.state = s;
-  versionBtn.title = labels[s];
-  versionBtn.setAttribute('aria-label', labels[s]);
-  versionBtn.querySelector('span').textContent = s === 'stale' ? 'Update' : '';
-}
-
-async function checkVersion() {
-  try {
-    const res = await fetch(`version.js?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(res.status);
-    latestVersion = (await res.text()).match(/VERSION = "([^"]+)"/)?.[1];
-    if (!latestVersion) throw new Error('no version');
-    setVersionState(latestVersion > VERSION ? 'stale' : 'ok');
-  } catch {
-    setVersionState('unknown');
-  }
-}
-
-versionBtn.addEventListener('click', async () => {
-  const s = versionBtn.dataset.state;
-  if (s === 'checking' || s === 'updating') return;
-  if (s !== 'stale') {
-    setVersionState('checking');
-    await checkVersion();
-    return;
-  }
-  setVersionState('updating');
-  await Promise.all(APP_FILES.map((f) => fetch(f, { cache: 'reload' }).catch(() => {})));
-  location.reload();
-});
-
-setVersionState('checking');
-checkVersion();
-setInterval(checkVersion, 5 * 60_000);
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) checkVersion();
-});
-window.addEventListener('online', checkVersion);
+// Version check: the update light is shared by Alex's Pages sites
+// (github.com/alexknight0/pages-common). Loaded dynamically so the remote still works if
+// jsDelivr is unreachable.
+import('https://cdn.jsdelivr.net/gh/alexknight0/pages-common@1.0.0/update.js')
+  .then(({ initUpdateLight }) => initUpdateLight({
+    version: VERSION,
+    buttons: '#version',
+  }))
+  .catch((e) => {
+    console.warn('update light:', e);
+    for (const b of document.querySelectorAll('.version')) {
+      b.dataset.state = 'unknown';
+      b.title = "Couldn't load the update check (offline?).";
+    }
+  });
