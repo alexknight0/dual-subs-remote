@@ -24,7 +24,7 @@ export const initializeAuth = (app) => getAuth(app); export const browserLocalPe
 export const getAuth = () => ({});
 export class GoogleAuthProvider {}
 export const onAuthStateChanged = (a, cb) => { listeners.push(cb); cb(user); return () => {}; };
-export const signInWithPopup = async () => { user = { uid: 'u1', email: 'octopus0246@gmail.com' }; listeners.forEach((l) => l(user)); return { user }; };
+export const signInWithPopup = async () => { user = { uid: 'u1', email: 'octopus0246@gmail.com', refreshToken: 'refresh-1' }; listeners.forEach((l) => l(user)); return { user }; };
 export const signOut = async () => { user = null; listeners.forEach((l) => l(null)); };
 """
 FAKE_DB = """
@@ -231,6 +231,22 @@ def main():
         check("close sends unpick", sent()[-1]["type"] == "unpick")
         page.evaluate("window.__push('remote/u1/panel', null)")
         check("panel gone", page.is_hidden("#panel"))
+        check("no volume-button app link on a computer", page.is_hidden("#androidApp"))
+        android = browser.new_page(viewport={"width": 390, "height": 844},
+                                   user_agent="Mozilla/5.0 (Linux; Android 16; Pixel 9a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36")
+        for name, body in (("app", FAKE_APP), ("auth", FAKE_AUTH), ("database", FAKE_DB)):
+            android.route(f"{SDK}firebase-{name}.js", serve(body))
+        android.goto(url)
+        android.click("#signinBtn")
+        android.wait_for_selector("#dock", state="visible")
+        check("on Android: volume-button app link", android.is_visible("#linkApp"))
+        android.click("#linkApp")  # (desktop Chromium can't open intent:// links, so it stays here)
+        android.wait_for_timeout(300)
+        link = android.get_attribute("#linkApp", "data-href") or ""
+        check("...which hands the sign-in to the app (or downloads it)",
+              link.startswith("intent://link?uid=u1&rt=refresh-1&email=octopus0246%40gmail.com#Intent;scheme=dualsubs;package=io.github.alexknight0.dualsubsvolume;")
+              and "S.browser_fallback_url=" in link and "app%2Fdual-subs-volume.apk" in link, link)
+        android.close()
         check("no errors", not errors, errors)
         browser.close()
     server.shutdown()

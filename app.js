@@ -38,6 +38,7 @@ let stateAt = 0; // local time the last state arrived
 let panel = null;
 let showEnglish = false; // tapped the blurred English on the phone (this line only)
 let shownLineKey = null;
+let signedInUser = null; // Firebase user (for the Android app link)
 
 // ---------------------------------------------------------------------------
 // Sign-in
@@ -46,6 +47,7 @@ onAuthStateChanged(auth, (user) => {
   for (const u of unsubs) u();
   unsubs = [];
   uid = user ? user.uid : null;
+  signedInUser = user || null;
   $('signin').hidden = Boolean(user);
   $('main').hidden = !user;
   $('dock').hidden = !user;
@@ -289,6 +291,25 @@ $('mediaToggle').addEventListener('click', () => {
   renderMediaToggle();
 });
 renderMediaToggle();
+
+// ---------------------------------------------------------------------------
+// Android app (dual-subs-volume, ~/projects/dual-subs-volume): the phone's volume buttons
+// change Netflix's volume. This button hands it the sign-in (a Firebase refresh token)
+// through an intent link; without the app installed, Chrome downloads the APK instead.
+const APP_PACKAGE = 'io.github.alexknight0.dualsubsvolume';
+const APP_APK = new URL('app/dual-subs-volume.apk', location.href).href;
+
+function appLink(user) {
+  const q = new URLSearchParams({ uid: user.uid, rt: user.refreshToken, email: user.email || '' });
+  return `intent://link?${q}#Intent;scheme=dualsubs;package=${APP_PACKAGE};S.browser_fallback_url=${encodeURIComponent(APP_APK)};end`;
+}
+
+$('androidApp').hidden = !/Android/i.test(navigator.userAgent);
+$('linkApp').addEventListener('click', () => {
+  if (!signedInUser) return;
+  $('linkApp').dataset.href = appLink(signedInUser); // (read by the test)
+  location.href = $('linkApp').dataset.href;
+});
 
 // ---------------------------------------------------------------------------
 // Rendering
