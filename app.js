@@ -66,8 +66,7 @@ onAuthStateChanged(auth, (user) => {
       render();
     }, fail),
     onValue(ref(db, `remote/${uid}/panel`), (snap) => {
-      panel = snap.val();
-      render();
+      onPanel(snap.val());
     }, fail),
   );
   render();
@@ -101,10 +100,56 @@ $('prev').addEventListener('click', () => send('prev'));
 $('next').addEventListener('click', () => send('next'));
 $('back10').addEventListener('click', () => skip(-10000));
 $('fwd10').addEventListener('click', () => skip(10000));
-$('pClose').addEventListener('click', () => send('unpick'));
+$('pClose').addEventListener('click', () => {
+  local = { pick: null, mark: null, at: Date.now() };
+  panel = null;
+  send('unpick');
+  render();
+});
 $('pAsk').addEventListener('click', () => send('ask'));
 for (const b of $('pMarks').querySelectorAll('button')) {
-  b.addEventListener('click', () => send('mark', { state: b.dataset.state }));
+  b.addEventListener('click', () => {
+    if (!panel) return;
+    // Shown straight away; the computer confirms a moment later.
+    local = { ...local, mark: { word: panel.word, state: b.dataset.state }, at: Date.now() };
+    panel = { ...panel, state: b.dataset.state };
+    send('mark', { state: b.dataset.state });
+    render();
+  });
+}
+
+// Tapping a word or a mark button shows the result at once (Alex, 2026-11-04: each went
+// phone -> database -> computer -> database -> phone first, ~0.8-1.5 s). For LOCAL_MS
+// after a tap, answers from the computer that predate it are ignored.
+const LOCAL_MS = 4000;
+let local = { pick: undefined, mark: null, at: 0 }; // pick: { c, i } | null (closed here) | undefined
+
+function pickWord(p) {
+  local = { pick: { c: p.c, i: p.i }, mark: null, at: Date.now() };
+  // What the phone knows already; the dictionary follows from the computer.
+  panel = {
+    word: p.w, form: p.t, kind: p.k, state: p.s, c: p.c, i: p.i, dict: 'pending',
+    link: `https://alexknight0.github.io/korean-dict/#w=${encodeURIComponent(p.w)}`,
+  };
+  send('pick', { c: p.c, i: p.i });
+  render();
+}
+
+function onPanel(value) {
+  const recent = Date.now() - local.at < LOCAL_MS;
+  if (recent && local.pick === null && value) return; // closed here; the close is on its way
+  if (recent && local.pick && !(value && value.c === local.pick.c && value.i === local.pick.i)) return; // not the new word yet
+  if (recent && local.mark && value && value.word === local.mark.word && value.state !== local.mark.state) {
+    value = { ...value, state: local.mark.state }; // the mark is on its way
+  }
+  panel = value;
+  render();
+}
+
+// The colour of a word in the line: a mark made here shows before the computer's update.
+function partState(p) {
+  const recent = Date.now() - local.at < LOCAL_MS;
+  return recent && local.mark && local.mark.word === p.w ? local.mark.state : p.s;
 }
 $('en').addEventListener('click', () => {
   showEnglish = !showEnglish;
@@ -311,10 +356,10 @@ function render() {
     else {
       // Trailing spaces go after the button: inside it they'd be dropped.
       const [, word, space] = p.t.match(/^([\s\S]*?)(\s*)$/);
-      const b = make('button', `w ${p.k === 'word' ? p.s : p.k}`, word);
+      const b = make('button', `w ${p.k === 'word' ? partState(p) : p.k}`, word);
       b.type = 'button';
       if (panel && panel.c === p.c && panel.i === p.i) b.classList.add('picked');
-      b.addEventListener('click', () => send('pick', { c: p.c, i: p.i }));
+      b.addEventListener('click', () => pickWord(p));
       el.append(b, space);
     }
   }

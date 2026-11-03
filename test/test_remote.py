@@ -200,6 +200,11 @@ def main():
         print("4/4: word panel")
         page.click("#line .w.unknown")
         check("tapping a word picks it", sent()[-1] | {"id": 0} == {"id": 0, "type": "pick", "c": 36000, "i": 8, "at": {".sv": "timestamp"}}, sent()[-1])
+        check("...and opens its panel at once, before the computer answers", page.is_visible("#panel")
+              and page.text_content("#pWord") == "적" and page.text_content("#pState") == "unknown"
+              and "Looking up" in page.text_content("#pDict"), (page.text_content("#pWord"), page.text_content("#pDict")))
+        page.evaluate("window.__push('remote/u1/panel', null)")  # the computer's answer to an earlier close, arriving late
+        check("...and a late answer from before doesn't close it", page.is_visible("#panel"))
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")
         check("panel shown", page.is_visible("#panel") and page.text_content("#pWord") == "적")
         top, off = page.evaluate(MIDDLE)
@@ -227,12 +232,22 @@ def main():
         check("Ask button hidden once answered", page.is_hidden("#pAsk"))
         page.click("#pMarks [data-state=learning]")
         check("Learning sends mark", sent()[-1]["type"] == "mark" and sent()[-1]["state"] == "learning", sent()[-1])
+        check("...and shows at once in the panel and the line", page.text_content("#pState") == "learning"
+              and "on" in page.get_attribute("#pMarks [data-state=learning]", "class")
+              and "learning" in page.get_attribute("#line .w.picked", "class"),
+              (page.text_content("#pState"), page.get_attribute("#line .w.picked", "class")))
+        page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")  # still the old state
+        check("...even if the computer's panel from before the tap arrives", page.text_content("#pState") == "learning",
+              page.text_content("#pState"))
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL | {'ai': None}, ensure_ascii=False)})")
         page.click("#pAsk")
         check("Ask AI sends ask", sent()[-1]["type"] == "ask")
         page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote.png"), full_page=False)
         page.click("#pClose")
         check("close sends unpick", sent()[-1]["type"] == "unpick")
+        check("...and closes at once", page.is_hidden("#panel"))
+        page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")  # sent before the close
+        check("...staying closed if an older panel arrives", page.is_hidden("#panel"))
         page.evaluate("window.__push('remote/u1/panel', null)")
         check("panel gone", page.is_hidden("#panel"))
         btn = page.locator("#menuBtn").bounding_box()
