@@ -169,10 +169,6 @@ main:has(#panel:not([hidden])) #now {
   color: #ddd;
 }
 
-.en.blurred {
-  filter: blur(6px);
-}
-
 .primary {
   padding: 10px 18px;
   border: none;

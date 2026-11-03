@@ -129,9 +129,8 @@ def main():
         MIDDLE = """(() => { const m = document.getElementById('main').getBoundingClientRect(); const n = document.getElementById('now').getBoundingClientRect(); return [n.top - m.top, (n.top + n.bottom) / 2 - (m.top + m.bottom) / 2]; })()"""
         top, off = page.evaluate(MIDDLE)
         check("line centred vertically", abs(off) < 40, (top, off))
-        check("English blurred like on the TV", "blurred" in page.get_attribute("#en", "class"))
+        check("English never blurred on the phone", "blurred" not in (page.get_attribute("#en", "class") or ""))
         page.click("#en")
-        check("tapping it shows it on the phone", "blurred" not in page.get_attribute("#en", "class"))
         check("...without sending anything", sent() == [], sent())
 
         print("3/4: controls")

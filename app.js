@@ -36,7 +36,6 @@ let unsubs = [];
 let state = null;
 let stateAt = 0; // local time the last state arrived
 let panel = null;
-let showEnglish = false; // tapped the blurred English on the phone (this line only)
 let shownLineKey = null;
 let signedInUser = null; // Firebase user (for the Android app link)
 
@@ -184,10 +183,6 @@ function partState(p) {
   const recent = Date.now() - local.at < LOCAL_MS;
   return recent && local.mark && local.mark.word === p.w ? local.mark.state : p.s;
 }
-$('en').addEventListener('click', () => {
-  showEnglish = !showEnglish;
-  render();
-});
 
 // ---------------------------------------------------------------------------
 // Seek slider. The extension sends the position (t) with each state update, not every
@@ -381,7 +376,6 @@ function render() {
 
   if (line?.key !== shownLineKey) {
     shownLineKey = line?.key ?? null;
-    showEnglish = false;
   }
   const el = $('line');
   el.textContent = '';
@@ -402,8 +396,7 @@ function render() {
   const en = $('en');
   en.textContent = line?.en || '';
   en.hidden = !line?.en;
-  en.classList.toggle('blurred', Boolean(line?.hidden) && !showEnglish);
-  en.title = line?.hidden ? 'Tap to show (on this phone only)' : '';
+  // Never blurred on the phone, even when the TV blurs it (Alex, 2026-11-04).
 
   renderPanel(live);
   renderSeek();
