@@ -800,9 +800,18 @@ body:has(#panel:not([hidden])) #chips {
   animation: spin 0.7s linear infinite;
 }
 
-/* A line that has finished on the TV, kept here until the next one (line.past). */
+/* A line that has finished on the TV, kept here until the next one (line.past). The tag
+   sits just above the block without taking space, so the line never moves (Alex). */
+#now {
+  position: relative;
+}
+
 .past-tag {
-  margin: 0 0 6px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin: 0 0 4px;
   text-align: center;
   font-size: 12px;
   letter-spacing: 0.02em;
@@ -815,5 +824,5 @@ body:has(#panel:not([hidden])) #chips {
 
 #now.past .line,
 #now.past .en {
-  opacity: 0.6;
+  opacity: 0.8;
 }
