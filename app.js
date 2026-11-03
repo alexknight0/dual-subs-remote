@@ -81,7 +81,10 @@ $('signinBtn').addEventListener('click', async () => {
     $('signinError').textContent = `Couldn't sign in: ${e.message || e}`;
   }
 });
-$('signout').addEventListener('click', () => signOut(auth));
+$('signout').addEventListener('click', () => {
+  setMenu(false);
+  signOut(auth);
+});
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -238,7 +241,20 @@ function appLink(user) {
   return `intent://link?${q}#Intent;scheme=dualsubs;package=${APP_PACKAGE};S.browser_fallback_url=${encodeURIComponent(APP_APK)};end`;
 }
 
-$('androidApp').hidden = !/Android/i.test(navigator.userAgent);
+$('linkApp').hidden = !/Android/i.test(navigator.userAgent);
+
+// ⋮ menu at the top right: Volume-button app (Android) and Sign out.
+function setMenu(open) {
+  $('menuList').hidden = !open;
+  $('menuBtn').setAttribute('aria-expanded', String(open));
+}
+$('menuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  setMenu($('menuList').hidden);
+});
+document.addEventListener('click', (e) => {
+  if (!$('menuList').hidden && !e.target.closest('#menuList')) setMenu(false);
+});
 $('linkApp').addEventListener('click', () => {
   if (!signedInUser) return;
   $('linkApp').dataset.href = appLink(signedInUser); // (read by the test)

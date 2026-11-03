@@ -18,6 +18,15 @@
       <h1>Dual Subs remote</h1>
       <button id="version" type="button" class="version" data-state="checking" aria-label="Checking for updates…" title="Checking for updates…"><i></i><span></span></button>
       <span id="status" class="status"></span>
+      <!-- Account menu (Alex, 2026-11-04: these were at the bottom of the page). -->
+      <div id="foot" class="menu" hidden>
+        <button id="menuBtn" type="button" class="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋮</button>
+        <div id="menuList" class="menu-list" hidden>
+          <button id="linkApp" type="button" class="android-only" hidden
+            title="Volume buttons control Netflix: installs the Android app if needed, then links it to this account">Volume-button app</button>
+          <button id="signout" type="button">Sign out</button>
+        </div>
+      </div>
     </header>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
@@ -63,11 +72,6 @@
         <div id="pDict"></div>
       </div>
 
-      <footer id="foot" class="muted" hidden>
-        <span id="androidApp" hidden><button id="linkApp" class="linkish" type="button"
-          title="Volume buttons control Netflix: installs the Android app if needed, then links it to this account">Volume-button app</button> ·</span>
-        <button id="signout" class="linkish" type="button">Sign out</button>
-      </footer>
     </main>
 
     <nav id="dock" class="dock" hidden>

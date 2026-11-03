@@ -235,7 +235,17 @@ def main():
         check("close sends unpick", sent()[-1]["type"] == "unpick")
         page.evaluate("window.__push('remote/u1/panel', null)")
         check("panel gone", page.is_hidden("#panel"))
-        check("no volume-button app link on a computer", page.is_hidden("#androidApp"))
+        btn = page.locator("#menuBtn").bounding_box()
+        hdr = page.evaluate("(() => { const h = document.querySelector('h1'); return [h.getBoundingClientRect().height, parseFloat(getComputedStyle(h).lineHeight) || 0, getComputedStyle(h).whiteSpace]; })()")
+        check("title on one line", hdr[0] < 30 and hdr[2] == "nowrap", hdr)
+        check("⋮ menu at the top right", btn["x"] + btn["width"] > 390 - 30 and btn["y"] < 40, btn)
+        check("...closed until tapped", page.is_hidden("#menuList"))
+        page.click("#menuBtn")
+        check("tapping it shows Sign out", page.is_visible("#signout"))
+        check("no volume-button app item on a computer", page.is_hidden("#linkApp"))
+        page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote-menu.png"))
+        page.mouse.click(195, 400)
+        check("tapping elsewhere closes it", page.is_hidden("#menuList"))
         android = browser.new_page(viewport={"width": 390, "height": 844},
                                    user_agent="Mozilla/5.0 (Linux; Android 16; Pixel 9a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36")
         for name, body in (("app", FAKE_APP), ("auth", FAKE_AUTH), ("database", FAKE_DB)):
@@ -243,7 +253,8 @@ def main():
         android.goto(url)
         android.click("#signinBtn")
         android.wait_for_selector("#dock", state="visible")
-        check("on Android: volume-button app link", android.is_visible("#linkApp"))
+        android.click("#menuBtn")
+        check("on Android: volume-button app in the menu", android.is_visible("#linkApp"))
         android.click("#linkApp")  # (desktop Chromium can't open intent:// links, so it stays here)
         android.wait_for_timeout(300)
         link = android.get_attribute("#linkApp", "data-href") or ""
