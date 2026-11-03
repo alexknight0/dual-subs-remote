@@ -236,7 +236,8 @@ def main():
             page.set_viewport_size({"width": 390, "height": height})
             page.wait_for_timeout(100)
             doc_h, inner, dock_bottom = page.evaluate(PAGE_FIT)
-            check(f"at {height}px tall: no page scroll, dock at the bottom", doc_h <= inner and dock_bottom == inner, (doc_h, inner, dock_bottom))
+            # A word's panel is open here, so the dock is hidden (its bottom reads 0).
+            check(f"at {height}px tall: no page scroll", doc_h <= inner and dock_bottom in (0, inner), (doc_h, inner, dock_bottom))
         page.evaluate("window.scrollTo(0, 500)")
         check("the page itself can't be scrolled", page.evaluate("scrollY") == 0, page.evaluate("scrollY"))
         check("picked word highlighted", page.eval_on_selector("#line .w.unknown", "e => e.classList.contains('picked')"))
