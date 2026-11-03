@@ -38,6 +38,8 @@ let stateAt = 0; // local time the last state arrived
 let panel = null;
 let shownLineKey = null;
 let signedInUser = null; // Firebase user (for the Android app link)
+let errorText = ''; // shown in the status line instead of Playing / Paused (showError)
+let errorTimer = null;
 
 // ---------------------------------------------------------------------------
 // Sign-in
@@ -53,11 +55,11 @@ onAuthStateChanged(auth, (user) => {
   $('chips').hidden = !user;
   $('foot').hidden = !user;
   if (!user) {
-    $('status').textContent = '';
+    showError('');
     return;
   }
   const fail = (e) => {
-    $('status').textContent = e.code === 'PERMISSION_DENIED' ? 'Not allowed for this account' : `Error: ${e.message}`;
+    showError(e.code === 'PERMISSION_DENIED' ? 'Not allowed for this account' : `Error: ${e.message}`);
   };
   unsubs.push(
     onValue(ref(db, `remote/${uid}/state`), (snap) => {
@@ -107,7 +109,7 @@ function send(type, args = {}, busy = null) {
   }
   set(ref(db, `remote/${uid}/command`), { id, type, ...args, at: serverTimestamp() }).catch((e) => {
     stopLoading(id);
-    $('status').textContent = `Couldn't send: ${e.message}`;
+    showError(`Couldn't send: ${e.message}`, 5000);
   });
 }
 
@@ -133,6 +135,16 @@ $('prev').addEventListener('click', () => send('prev', {}, 'prev'));
 $('next').addEventListener('click', () => send('next', {}, 'next'));
 $('back10').addEventListener('click', () => skip(-10000, 'back10'));
 $('fwd10').addEventListener('click', () => skip(10000, 'fwd10'));
+// Errors take the status line's place (for `ms`, or until cleared).
+function showError(text, ms = 0) {
+  errorText = text;
+  clearTimeout(errorTimer);
+  if (text && ms) errorTimer = setTimeout(() => showError(''), ms);
+  $('status').textContent = text;
+  setTimeout(render, 0); // (not now: this can run before the rest of the module has loaded)
+}
+
+$('pCloseBig').addEventListener('click', () => $('pClose').click());
 $('pClose').addEventListener('click', () => {
   local = { pick: null, mark: null, at: Date.now() };
   panel = null;
@@ -383,9 +395,9 @@ function renderMulti() {
 
 function render() {
   const live = connected();
-  const status = $('status');
-  status.className = live ? 'status on' : 'status';
-  status.textContent = live ? (state.playing ? 'Playing' : 'Paused') : 'Not connected';
+  // Under the title while connected; on its own in the title's place when not.
+  if (!errorText) $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : 'Not connected';
+  $('status').classList.toggle('error', Boolean(errorText));
   const playing = Boolean(live && state.playing);
   $('play').classList.toggle('playing', playing);
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');

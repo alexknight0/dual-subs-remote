@@ -17,7 +17,6 @@
       ></a>
       <h1>Dual Subs remote</h1>
       <button id="version" type="button" class="version" data-state="checking" aria-label="Checking for updates…" title="Checking for updates…"><i></i><span></span></button>
-      <span id="status" class="status"></span>
       <!-- Account menu (Alex, 2026-11-04: these were at the bottom of the page). -->
       <div id="foot" class="menu" hidden>
         <button id="menuBtn" type="button" class="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">⋮</button>
@@ -34,6 +33,8 @@
         <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
       </div>
     <p id="title" class="muted"></p>
+    <!-- Playing / Paused under the title; "Not connected" (or an error) in the title's place. -->
+    <p id="status" class="play-state"></p>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -89,6 +90,11 @@
         <button id="next" type="button" aria-label="Next line"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8" /></svg><small>line</small></button>
       </div>
     </nav>
+
+    <!-- With a word open the buttons step aside; a big Close takes their place (Alex). -->
+    <div id="closeBar" class="close-bar">
+      <button id="pCloseBig" type="button">Close</button>
+    </div>
 
     <!-- Popups for precise adjustment, opened by the chips above the buttons. -->
     <div id="volSheet" class="sheet" hidden>

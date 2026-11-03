@@ -113,7 +113,8 @@ def main():
         check("signed out: sign-in shown, controls hidden", page.is_hidden("#dock"))
         page.click("#signinBtn")
         page.wait_for_selector("#dock", state="visible")
-        check("signed in: waiting for Netflix", page.is_visible("#waiting") and "Not connected" in page.text_content("#status"))
+        check("signed in: waiting for Netflix", page.is_visible("#waiting") and page.text_content("#status") == "Not connected"
+              and page.is_hidden("#title"), (page.text_content("#status"), page.is_hidden("#title")))
 
         print("2/4: the line on screen")
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
@@ -122,6 +123,8 @@ def main():
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
+        st_top, t_bottom = page.evaluate("[document.getElementById('status').getBoundingClientRect().top, document.getElementById('title').getBoundingClientRect().bottom]")
+        check("status under the title, not in the header", 0 <= st_top - t_bottom < 4 and page.locator("header #status").count() == 0, (st_top, t_bottom))
         check("status shows playing", page.text_content("#status") == "Playing"
               and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
               and page.is_hidden("#play .i-play"))
@@ -255,6 +258,9 @@ def main():
         h, room, off = page.evaluate(GROUP)
         check("with the panel open, line + panel are centred together", h > room or abs(off) < 20, (h, room, off))
         check("...and the buttons and chips step aside for it", page.is_hidden("#dock") and page.is_hidden("#chips"))
+        close = page.locator("#pCloseBig").bounding_box()
+        check("...with a big Close at the bottom", close and close["height"] >= 64 and close["width"] > 300
+              and close["y"] + close["height"] > 844 - 30, close)
         fit = page.evaluate("(() => { const m = document.getElementById('main'); return [m.scrollHeight, m.clientHeight, getComputedStyle(m).scrollbarWidth]; })()")
         check("a typical word fits without scrolling, and no scroll bar ever shows", fit[0] <= fit[1] and fit[2] == "none", fit)
         # Android's URL bar showing/hiding (and pull-to-refresh) changes the visible height:
@@ -293,7 +299,7 @@ def main():
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL | {'ai': {'pending': True}}, ensure_ascii=False)})")
         check("...then 'Asking Gemini…' with a spinner", page.is_visible("#pAi .spinner") and "Asking Gemini" in page.text_content("#pAi"))
         page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote.png"), full_page=False)
-        page.click("#pClose")
+        page.click("#pCloseBig")
         check("close sends unpick", sent()[-1]["type"] == "unpick")
         check("...and closes at once", page.is_hidden("#panel"))
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")  # sent before the close

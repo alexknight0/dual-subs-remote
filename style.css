@@ -63,22 +63,6 @@ h1 {
   text-overflow: ellipsis;
 }
 
-.status {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.status.on::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: #2da44e;
-}
 
 .muted {
   color: var(--muted);
@@ -677,6 +661,7 @@ body:has(#panel:not([hidden])) #chips {
 /* ⋮ account menu at the top right of the header. */
 .menu {
   position: relative;
+  margin-left: auto; /* far right of the header */
 }
 
 .menu[hidden] {
@@ -852,4 +837,48 @@ body:has(#panel:not([hidden])) #chips {
 
 body:has(#panel:not([hidden])) #title {
   display: none;
+}
+
+/* Playing / Paused under the title; "Not connected" alone in the title's place. */
+.play-state {
+  margin: 0;
+  padding: 0 var(--pad) 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.play-state.error {
+  color: #f5c96b;
+}
+
+body:has(#panel:not([hidden])) .play-state {
+  display: none;
+}
+
+/* Big Close at the bottom while a word is open. */
+.close-bar {
+  display: none;
+  padding: 8px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: #181818;
+}
+
+body:has(#panel:not([hidden])) .close-bar {
+  display: block;
+}
+
+.close-bar button {
+  width: 100%;
+  height: 72px;
+  border: 1px solid #3a3a3a;
+  border-radius: 16px;
+  background: #262626;
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.close-bar button:active {
+  background: #333;
 }
