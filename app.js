@@ -154,6 +154,44 @@ $('seek').addEventListener('change', () => {
 setInterval(renderSeek, 500);
 
 // ---------------------------------------------------------------------------
+// Volume: Netflix's own volume and mute on the computer (state.v 0-1, state.m). Web
+// pages can't use the phone's volume buttons (the browser keeps them for the phone's
+// own volume), so this is an on-screen slider.
+let volDragging = false;
+let volSent = null; // { v, m, at }: shown until the computer confirms or it's 2 s old
+
+function renderVolume() {
+  const has = connected() && typeof state.v === 'number';
+  $('volRow').hidden = !has;
+  if (!has) return;
+  const recent = volSent && Date.now() - volSent.at < 2000;
+  const v = recent && volSent.v !== undefined ? volSent.v : state.v;
+  const m = recent && volSent.m !== undefined ? volSent.m : state.m;
+  if (!volDragging) $('vol').value = String(Math.round(v * 100));
+  $('volPct').textContent = m ? 'muted' : `${Math.round((volDragging ? $('vol').value / 100 : v) * 100)}%`;
+  $('mute').textContent = m || v === 0 ? '🔇' : '🔊';
+  $('mute').setAttribute('aria-label', m ? 'Unmute' : 'Mute');
+}
+
+$('vol').addEventListener('input', () => {
+  volDragging = true;
+  $('volPct').textContent = `${$('vol').value}%`;
+});
+$('vol').addEventListener('change', () => {
+  volDragging = false;
+  const v = Number($('vol').value) / 100;
+  volSent = { v, m: false, at: Date.now() };
+  send('volume', { v });
+  renderVolume();
+});
+$('mute').addEventListener('click', () => {
+  const muted = !(volSent && Date.now() - volSent.at < 2000 ? volSent.m : state && state.m);
+  volSent = { m: muted, at: Date.now() };
+  send('mute', { muted });
+  renderVolume();
+});
+
+// ---------------------------------------------------------------------------
 // Rendering
 const make = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -219,6 +257,7 @@ function render() {
 
   renderPanel(live);
   renderSeek();
+  renderVolume();
 }
 
 function renderPanel(live) {

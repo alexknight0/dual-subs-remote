@@ -394,6 +394,21 @@ li.best {
   font-weight: 600;
 }
 
+/* Volume row: same shape as the seek row; its mute button is small, unlike the dock's. */
+.vol #volPct {
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.dock .vol .mute {
+  flex: none;
+  min-height: 0;
+  width: 44px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
 .dock button {
   flex: 1;
   display: flex;

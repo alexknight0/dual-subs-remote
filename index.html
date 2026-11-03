@@ -72,6 +72,11 @@
         <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek" />
         <span id="tEnd">0:00</span>
       </div>
+      <div id="volRow" class="seek vol" hidden>
+        <button id="mute" type="button" class="mute" aria-label="Mute">🔊</button>
+        <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" />
+        <span id="volPct">100%</span>
+      </div>
       <div class="buttons">
         <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
         <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>

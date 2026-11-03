@@ -45,6 +45,8 @@ STATE = {
     "playing": True,
     "t": 600000,
     "d": 3720000,
+    "v": 0.8,
+    "m": False,
     "line": {
         "key": "36000",
         "parts": [
@@ -158,6 +160,21 @@ def main():
         check("slider is a big touch target", seek["height"] >= 36, seek)
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'d': None}, ensure_ascii=False)})")
         check("no slider without a length", page.is_hidden("#seekRow"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
+        page.wait_for_timeout(300)
+        check("volume row shows Netflix's volume", page.is_visible("#volRow") and page.text_content("#volPct") == "80%"
+              and page.input_value("#vol") == "80", (page.text_content("#volPct"), page.input_value("#vol")))
+        vol = page.locator("#vol").bounding_box()
+        page.mouse.click(vol["x"] + vol["width"] * 0.25, vol["y"] + vol["height"] / 2)
+        last = sent()[-1]
+        check("moving it sends the volume", last["type"] == "volume" and 0.15 < last["v"] < 0.35, last)
+        page.click("#mute")
+        check("mute button sends mute", sent()[-1]["type"] == "mute" and sent()[-1]["muted"] is True
+              and page.text_content("#volPct") == "muted", (sent()[-1], page.text_content("#volPct")))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'v': None}, ensure_ascii=False)})")
+        page.wait_for_timeout(2100)
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'v': None}, ensure_ascii=False)})")
+        check("no volume row if the computer doesn't send one", page.is_hidden("#volRow"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
 
         print("4/4: word panel")
