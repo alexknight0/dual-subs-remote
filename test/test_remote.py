@@ -130,6 +130,14 @@ def main():
         top, off = page.evaluate(MIDDLE)
         check("line centred vertically", abs(off) < 40, (top, off))
         check("English never blurred on the phone", "blurred" not in (page.get_attribute("#en", "class") or ""))
+        check("a current line has no 'finished' tag", page.is_hidden("#pastTag"))
+        past = json.loads(json.dumps(STATE))
+        past["line"]["past"] = True
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
+        check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "Finished" in page.text_content("#pastTag")
+              and "past" in page.get_attribute("#now", "class"))
+        check("...and its words can still be tapped", page.locator("#line .w").count() == 4)
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
         page.click("#en")
         check("...without sending anything", sent() == [], sent())
 

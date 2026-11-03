@@ -393,6 +393,10 @@ function render() {
     }
   }
   if (live && !line) el.append(make('span', 'muted', 'No subtitle right now.'));
+  // The extension keeps the last line up between lines (line.past), so its words can still
+  // be marked: say so, and dim it a little.
+  $('pastTag').hidden = !line?.past;
+  $('now').classList.toggle('past', Boolean(line?.past));
   const en = $('en');
   en.textContent = line?.en || '';
   en.hidden = !line?.en;

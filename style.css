@@ -799,3 +799,21 @@ body:has(#panel:not([hidden])) #chips {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+
+/* A line that has finished on the TV, kept here until the next one (line.past). */
+.past-tag {
+  margin: 0 0 6px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.past-tag[hidden] {
+  display: none;
+}
+
+#now.past .line,
+#now.past .en {
+  opacity: 0.6;
+}
