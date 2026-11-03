@@ -39,7 +39,7 @@ let serverOffset = 0; // server time - this phone's time (RTDB .info/serverTimeO
 let panel = null;
 let shownLineKey = null;
 let signedInUser = null; // Firebase user (for the Android app link)
-let errorText = ''; // shown in the status line instead of Playing / Paused (showError)
+let errorText = ''; // shown under the title (showError)
 let errorTimer = null;
 
 // ---------------------------------------------------------------------------
@@ -139,13 +139,13 @@ $('prev').addEventListener('click', () => send('prev', {}, 'prev'));
 $('next').addEventListener('click', () => send('next', {}, 'next'));
 $('back10').addEventListener('click', () => skip(-10000, 'back10'));
 $('fwd10').addEventListener('click', () => skip(10000, 'fwd10'));
-// Errors take the status line's place (for `ms`, or until cleared).
+// Errors show under the title (for `ms`, or until cleared).
 function showError(text, ms = 0) {
   errorText = text;
   clearTimeout(errorTimer);
   if (text && ms) errorTimer = setTimeout(() => showError(''), ms);
-  $('status').textContent = text;
-  setTimeout(render, 0); // (not now: this can run before the rest of the module has loaded)
+  $('error').textContent = text;
+  $('error').hidden = !text;
 }
 
 $('pCloseBig').addEventListener('click', () => $('pClose').click());
@@ -408,8 +408,9 @@ function render() {
   $('dock').hidden = !live;
   $('chips').hidden = !live;
   // Under the title while connected; on its own in the title's place when not.
-  if (!errorText) $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : 'Not connected';
-  $('status').classList.toggle('error', Boolean(errorText));
+  // Playing / Paused under the subtitle. Nothing when not connected: the message in the
+  // middle of the screen says so.
+  $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : '';
   const playing = Boolean(live && state.playing);
   $('play').classList.toggle('playing', playing);
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');

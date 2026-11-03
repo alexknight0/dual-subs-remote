@@ -117,14 +117,14 @@ def main():
         check("signed out: sign-in shown, controls hidden", page.is_hidden("#dock"))
         page.click("#signinBtn")
         page.wait_for_selector("#main", state="visible")
-        check("signed in: waiting for Netflix", page.is_visible("#waiting") and page.text_content("#status") == "Not connected"
-              and page.is_hidden("#title"), (page.text_content("#status"), page.is_hidden("#title")))
+        check("signed in: waiting for Netflix", page.is_visible("#waiting") and page.is_hidden("#now")
+              and page.is_hidden("#title"), page.is_hidden("#title"))
         check("...with no buttons while not connected", page.is_hidden("#dock") and page.is_hidden("#chips"))
         old = STATE | {"at": 0}
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(old, ensure_ascii=False)})")
         check("an old stored state (Netflix closed long ago) isn't 'connected', even just after loading",
-              page.text_content("#status") == "Not connected" and page.is_hidden("#dock") and page.is_hidden("#now"),
-              page.text_content("#status"))
+              page.is_visible("#waiting") and page.is_hidden("#dock") and page.is_hidden("#now"),
+              page.is_visible("#waiting"))
 
         print("2/4: the line on screen")
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
@@ -133,8 +133,8 @@ def main():
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
-        st_top, t_bottom = page.evaluate("[document.getElementById('status').getBoundingClientRect().top, document.getElementById('title').getBoundingClientRect().bottom]")
-        check("status under the title, not in the header", 0 <= st_top - t_bottom < 4 and page.locator("header #status").count() == 0, (st_top, t_bottom))
+        st_top, en_bottom = page.evaluate("[document.getElementById('status').getBoundingClientRect().top, document.getElementById('en').getBoundingClientRect().bottom]")
+        check("Playing / Paused under the subtitle", 0 <= st_top - en_bottom < 24 and page.locator("header #status").count() == 0, (st_top, en_bottom))
         check("status shows playing", page.text_content("#status") == "Playing"
               and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
               and page.is_hidden("#play .i-play"))
@@ -162,9 +162,9 @@ def main():
         past["line"]["past"] = True
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
         check("...without moving the line", abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
-        tag, line_top = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().bottom, document.getElementById('line').getBoundingClientRect().top]")
-        check("...with the tag just above the line, not over it", tag <= line_top + 0.5, (tag, line_top))
-        check("...reading 'Subtitle finished'", page.text_content("#pastTag") == "Subtitle finished", page.text_content("#pastTag"))
+        tag_top, st_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('status').getBoundingClientRect().bottom]")
+        check("...with the tag under Playing / Paused", 0 <= tag_top - st_bottom < 8, (tag_top, st_bottom))
+        check("...reading '(subtitle finished)'", page.text_content("#pastTag") == "(subtitle finished)", page.text_content("#pastTag"))
         check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "finished" in page.text_content("#pastTag")
               and "past" in page.get_attribute("#now", "class"))
         check("...and its words can still be tapped", page.locator("#line .w").count() == 4)

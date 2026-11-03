@@ -33,8 +33,7 @@
         <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
       </div>
     <p id="title" class="muted"></p>
-    <!-- Playing / Paused under the title; "Not connected" (or an error) in the title's place. -->
-    <p id="status" class="play-state"></p>
+    <p id="error" class="error-line" role="alert" hidden></p>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -54,9 +53,12 @@
         Open a Netflix episode on your computer (signed in to Dual Subs with the same account).
       </div>
       <div id="now" hidden>
-        <p id="pastTag" class="past-tag" hidden>Subtitle finished</p>
         <div id="line" class="line"></div>
         <button id="en" class="en" type="button"></button>
+        <!-- Under the subtitle (Alex, 2026-11-04). The tag keeps its space when hidden, so
+             the line doesn't move when a subtitle finishes. -->
+        <p id="status" class="play-state"></p>
+        <p id="pastTag" class="past-tag" hidden>(subtitle finished)</p>
       </div>
 
       <div id="panel" class="panel" hidden>

@@ -780,18 +780,10 @@ body:has(#panel:not([hidden])) #chips {
   animation: spin 0.7s linear infinite;
 }
 
-/* A line that has finished on the TV, kept here until the next one (line.past). The tag
-   sits just above the block without taking space, so the line never moves (Alex). */
-#now {
-  position: relative;
-}
-
+/* A line that has finished on the TV, kept here until the next one (line.past): a tag
+   under Playing / Paused. It keeps its space when hidden, so the line never moves. */
 .past-tag {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  margin: 0 0 4px;
+  margin: 2px 0 0;
   text-align: center;
   font-size: 12px;
   letter-spacing: 0.02em;
@@ -799,7 +791,8 @@ body:has(#panel:not([hidden])) #chips {
 }
 
 .past-tag[hidden] {
-  display: none;
+  display: block !important; /* beats the global [hidden] rule: keep the space */
+  visibility: hidden;
 }
 
 #now.past .line,
@@ -839,20 +832,30 @@ body:has(#panel:not([hidden])) #title {
   display: none;
 }
 
-/* Playing / Paused under the title; "Not connected" alone in the title's place. */
+/* Playing / Paused under the subtitle. */
 .play-state {
-  margin: 0;
-  padding: 0 var(--pad) 6px;
+  margin: 14px 0 0;
   text-align: center;
   font-size: 13px;
   color: var(--muted);
 }
 
-.play-state.error {
+/* With a word open these give the room to the panel. */
+body:has(#panel:not([hidden])) .play-state,
+body:has(#panel:not([hidden])) .past-tag {
+  display: none;
+}
+
+/* Errors (couldn't send, not allowed) under the title. */
+.error-line {
+  margin: 0;
+  padding: 0 var(--pad) 6px;
+  text-align: center;
+  font-size: 13px;
   color: #f5c96b;
 }
 
-body:has(#panel:not([hidden])) .play-state {
+.error-line[hidden] {
   display: none;
 }
 
