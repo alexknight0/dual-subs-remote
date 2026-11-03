@@ -30,7 +30,11 @@ export const signOut = async () => { user = null; listeners.forEach((l) => l(nul
 FAKE_DB = """
 const subs = {};
 window.__sent = [];
-window.__push = (path, value) => (subs[path] || []).forEach((cb) => cb({ val: () => value }));
+// A state with at: "NOW" gets the current time, so it counts as fresh (the app checks at).
+window.__push = (path, value) => {
+  if (value && value.at === 'NOW') value = { ...value, at: Date.now() };
+  (subs[path] || []).forEach((cb) => cb({ val: () => value }));
+};
 export const getDatabase = () => ({});
 export const ref = (db, path) => path;
 export const serverTimestamp = () => ({ '.sv': 'timestamp' });
@@ -39,7 +43,7 @@ export const set = async (path, value) => { window.__sent.push({ path, value });
 """
 
 STATE = {
-    "at": 1,
+    "at": "NOW",
     "movieId": "1",
     "title": "Tale of the Nine Tailed · E3",
     "playing": True,
@@ -112,9 +116,15 @@ def main():
         page.wait_for_selector("#signinBtn", state="visible")
         check("signed out: sign-in shown, controls hidden", page.is_hidden("#dock"))
         page.click("#signinBtn")
-        page.wait_for_selector("#dock", state="visible")
+        page.wait_for_selector("#main", state="visible")
         check("signed in: waiting for Netflix", page.is_visible("#waiting") and page.text_content("#status") == "Not connected"
               and page.is_hidden("#title"), (page.text_content("#status"), page.is_hidden("#title")))
+        check("...with no buttons while not connected", page.is_hidden("#dock") and page.is_hidden("#chips"))
+        old = STATE | {"at": 0}
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(old, ensure_ascii=False)})")
+        check("an old stored state (Netflix closed long ago) isn't 'connected', even just after loading",
+              page.text_content("#status") == "Not connected" and page.is_hidden("#dock") and page.is_hidden("#now"),
+              page.text_content("#status"))
 
         print("2/4: the line on screen")
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
@@ -323,7 +333,7 @@ def main():
             android.route(f"{SDK}firebase-{name}.js", serve(body))
         android.goto(url)
         android.click("#signinBtn")
-        android.wait_for_selector("#dock", state="visible")
+        android.wait_for_selector("#main", state="visible")
         android.click("#menuBtn")
         check("on Android: volume-button app in the menu", android.is_visible("#linkApp"))
         android.click("#linkApp")  # (desktop Chromium can't open intent:// links, so it stays here)

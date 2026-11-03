@@ -35,6 +35,7 @@ let uid = null;
 let unsubs = [];
 let state = null;
 let stateAt = 0; // local time the last state arrived
+let serverOffset = 0; // server time - this phone's time (RTDB .info/serverTimeOffset)
 let panel = null;
 let shownLineKey = null;
 let signedInUser = null; // Firebase user (for the Android app link)
@@ -51,8 +52,7 @@ onAuthStateChanged(auth, (user) => {
   signedInUser = user || null;
   $('signin').hidden = Boolean(user);
   $('main').hidden = !user;
-  $('dock').hidden = !user;
-  $('chips').hidden = !user;
+  // (The dock and chips also hide while not connected: see render.)
   $('foot').hidden = !user;
   if (!user) {
     showError('');
@@ -67,6 +67,10 @@ onAuthStateChanged(auth, (user) => {
       stateAt = Date.now();
       if (state?.src) sources.set(state.src, Date.now());
       onAck(state?.ack);
+      render();
+    }, fail),
+    onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+      serverOffset = Number(snap.val()) || 0;
       render();
     }, fail),
     onValue(ref(db, `remote/${uid}/panel`), (snap) => {
@@ -372,7 +376,12 @@ function appendMarkdown(el, text) {
     });
 }
 
-const connected = () => state && Date.now() - stateAt < STALE_MS;
+// Connected = the extension's last state is recent by its own timestamp (state.at, the
+// computer's clock) against server time, not by when it reached this phone: the database
+// hands over the last stored state on load, however old (Alex, 2026-11-04: a fresh page
+// said connected for 12 s with no Netflix tab open). Both checks must hold.
+const connected = () => Boolean(state) && typeof state.at === 'number'
+  && Date.now() + serverOffset - state.at < STALE_MS && Date.now() - stateAt < STALE_MS;
 
 // Netflix open in more than one tab or computer: each sends its own state (state.src =
 // "<computer>:<tab>") at least every 5 s, and commands go to whichever sent last, so the
@@ -395,6 +404,9 @@ function renderMulti() {
 
 function render() {
   const live = connected();
+  // The buttons only make sense with Netflix on the other end.
+  $('dock').hidden = !live;
+  $('chips').hidden = !live;
   // Under the title while connected; on its own in the title's place when not.
   if (!errorText) $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : 'Not connected';
   $('status').classList.toggle('error', Boolean(errorText));
