@@ -28,10 +28,12 @@
         </div>
       </div>
     </header>
+    <div id="multi" class="multi" role="alert" hidden></div>
     <div id="chips" class="chips" hidden>
         <button id="volBtn" type="button" class="chip" hidden aria-label="Volume">🔊 100%</button>
         <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
       </div>
+    <p id="title" class="muted"></p>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -51,8 +53,7 @@
         Open a Netflix episode on your computer (signed in to Dual Subs with the same account).
       </div>
       <div id="now" hidden>
-        <p id="title" class="muted"></p>
-        <p id="pastTag" class="past-tag" hidden>Finished · last line</p>
+        <p id="pastTag" class="past-tag" hidden>Subtitle finished</p>
         <div id="line" class="line"></div>
         <button id="en" class="en" type="button"></button>
       </div>

@@ -103,11 +103,6 @@ main {
 
 /* Sign out only while no word is open, to leave the panel room. */
 
-#title {
-  margin: 4px 0 8px;
-  font-size: 13px;
-  text-align: center;
-}
 
 /* The line sits in the middle of the screen, and moves to the top when a word's panel
    opens so the panel fits under it. */
@@ -825,4 +820,36 @@ body:has(#panel:not([hidden])) #chips {
 #now.past .line,
 #now.past .en {
   opacity: 0.8;
+}
+
+/* Netflix open in several tabs or computers (renderMulti). */
+.multi {
+  margin: 0 var(--pad) 8px;
+  padding: 8px 10px;
+  border: 1px solid #7a5a12;
+  border-radius: 10px;
+  background: #2b2210;
+  color: #f5c96b;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.multi[hidden] {
+  display: none;
+}
+
+/* The episode title sits under the chips, outside the centred line. */
+#title {
+  margin: 0;
+  padding: 0 var(--pad) 6px;
+  font-size: 13px;
+  text-align: center;
+}
+
+#title[hidden] {
+  display: none;
+}
+
+body:has(#panel:not([hidden])) #title {
+  display: none;
 }

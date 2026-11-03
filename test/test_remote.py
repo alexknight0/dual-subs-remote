@@ -126,6 +126,18 @@ def main():
               and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
               and page.is_hidden("#play .i-play"))
         check("title shown", "Nine Tailed" in page.text_content("#title"))
+        t_top, c_bottom = page.evaluate("[document.getElementById('title').getBoundingClientRect().top, document.getElementById('chips').getBoundingClientRect().bottom]")
+        check("...under the volume and position chips", 0 <= t_top - c_bottom < 12, (t_top, c_bottom))
+        check("one Netflix tab: no warning", page.is_hidden("#multi"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'src': 'mac1:5'}, ensure_ascii=False)})")
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'src': 'mac1:9'}, ensure_ascii=False)})")
+        check("two tabs sending: warned", page.is_visible("#multi") and "open in 2 tabs" in page.text_content("#multi"),
+              page.text_content("#multi"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'src': 'pc2:3'}, ensure_ascii=False)})")
+        check("...or computers", "3 places" in page.text_content("#multi"), page.text_content("#multi"))
+        page.evaluate("Date.now = ((n) => () => n() + 13000)(Date.now)")  # 13 s later, only one is still sending
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'src': 'mac1:5'}, ensure_ascii=False)})")
+        check("...and the warning goes once only one is left", page.is_hidden("#multi"))
         MIDDLE = """(() => { const m = document.getElementById('main').getBoundingClientRect(); const n = document.getElementById('now').getBoundingClientRect(); return [n.top - m.top, (n.top + n.bottom) / 2 - (m.top + m.bottom) / 2]; })()"""
         top, off = page.evaluate(MIDDLE)
         check("line centred vertically", abs(off) < 40, (top, off))
@@ -137,9 +149,10 @@ def main():
         past["line"]["past"] = True
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
         check("...without moving the line", abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
-        tag, title = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().bottom, document.getElementById('title').getBoundingClientRect().top]")
-        check("...with the tag above the title, not over it", tag <= title + 0.5, (tag, title))
-        check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "Finished" in page.text_content("#pastTag")
+        tag, line_top = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().bottom, document.getElementById('line').getBoundingClientRect().top]")
+        check("...with the tag just above the line, not over it", tag <= line_top + 0.5, (tag, line_top))
+        check("...reading 'Subtitle finished'", page.text_content("#pastTag") == "Subtitle finished", page.text_content("#pastTag"))
+        check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "finished" in page.text_content("#pastTag")
               and "past" in page.get_attribute("#now", "class"))
         check("...and its words can still be tapped", page.locator("#line .w").count() == 4)
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")

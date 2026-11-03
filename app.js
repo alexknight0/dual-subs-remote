@@ -63,6 +63,7 @@ onAuthStateChanged(auth, (user) => {
     onValue(ref(db, `remote/${uid}/state`), (snap) => {
       state = snap.val();
       stateAt = Date.now();
+      if (state?.src) sources.set(state.src, Date.now());
       onAck(state?.ack);
       render();
     }, fail),
@@ -361,6 +362,25 @@ function appendMarkdown(el, text) {
 
 const connected = () => state && Date.now() - stateAt < STALE_MS;
 
+// Netflix open in more than one tab or computer: each sends its own state (state.src =
+// "<computer>:<tab>") at least every 5 s, and commands go to whichever sent last, so the
+// remote flips between them. Warn while two or more have been heard within SOURCES_MS.
+const SOURCES_MS = 12000;
+const sources = new Map(); // src -> last heard (Date.now())
+
+function renderMulti() {
+  const now = Date.now();
+  for (const [k, at] of sources) if (now - at > SOURCES_MS) sources.delete(k);
+  const n = sources.size;
+  const computers = new Set([...sources.keys()].map((k) => k.split(':')[0])).size;
+  const el = $('multi');
+  el.hidden = n < 2;
+  if (n >= 2) {
+    el.textContent = `Netflix is open in ${n} ${computers > 1 ? 'places (tabs or computers)' : 'tabs'}. The remote ` +
+      'switches between them and may control the wrong one: close all but one.';
+  }
+}
+
 function render() {
   const live = connected();
   const status = $('status');
@@ -373,6 +393,8 @@ function render() {
   $('waiting').hidden = live;
   $('now').hidden = !live;
   $('title').textContent = (live && state.title) || '';
+  $('title').hidden = !live || !state.title;
+  renderMulti();
 
   if (line?.key !== shownLineKey) {
     shownLineKey = line?.key ?? null;
