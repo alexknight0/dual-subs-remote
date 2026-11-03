@@ -133,8 +133,8 @@ def main():
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
-        st_top, en_bottom = page.evaluate("[document.getElementById('status').getBoundingClientRect().top, document.getElementById('en').getBoundingClientRect().bottom]")
-        check("Playing / Paused under the subtitle", 0 <= st_top - en_bottom < 24 and page.locator("header #status").count() == 0, (st_top, en_bottom))
+        st_bottom, line_top = page.evaluate("[document.getElementById('status').getBoundingClientRect().bottom, document.getElementById('line').getBoundingClientRect().top]")
+        check("Playing / Paused just above the subtitle", 0 <= line_top - st_bottom < 24 and page.locator("header #status").count() == 0, (st_bottom, line_top))
         check("status shows playing", page.text_content("#status") == "Playing"
               and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
               and page.is_hidden("#play .i-play"))
@@ -162,8 +162,8 @@ def main():
         past["line"]["past"] = True
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
         check("...without moving the line", abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
-        tag_top, st_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('status').getBoundingClientRect().bottom]")
-        check("...with the tag under Playing / Paused", 0 <= tag_top - st_bottom < 8, (tag_top, st_bottom))
+        tag_top, en_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('en').getBoundingClientRect().bottom]")
+        check("...with the tag under the subtitle", 0 <= tag_top - en_bottom < 24, (tag_top, en_bottom))
         check("...reading '(subtitle finished)'", page.text_content("#pastTag") == "(subtitle finished)", page.text_content("#pastTag"))
         check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "finished" in page.text_content("#pastTag")
               and "past" in page.get_attribute("#now", "class"))

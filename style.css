@@ -781,9 +781,9 @@ body:has(#panel:not([hidden])) #chips {
 }
 
 /* A line that has finished on the TV, kept here until the next one (line.past): a tag
-   under Playing / Paused. It keeps its space when hidden, so the line never moves. */
+   under the subtitle. It keeps its space when hidden, so the line never moves. */
 .past-tag {
-  margin: 2px 0 0;
+  margin: 12px 0 0;
   text-align: center;
   font-size: 12px;
   letter-spacing: 0.02em;
@@ -832,9 +832,9 @@ body:has(#panel:not([hidden])) #title {
   display: none;
 }
 
-/* Playing / Paused under the subtitle. */
+/* Playing / Paused above the subtitle (Alex, 2026-11-04). */
 .play-state {
-  margin: 14px 0 0;
+  margin: 0 0 10px;
   text-align: center;
   font-size: 13px;
   color: var(--muted);

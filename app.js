@@ -408,7 +408,7 @@ function render() {
   $('dock').hidden = !live;
   $('chips').hidden = !live;
   // Under the title while connected; on its own in the title's place when not.
-  // Playing / Paused under the subtitle. Nothing when not connected: the message in the
+  // Playing / Paused above the subtitle. Nothing when not connected: the message in the
   // middle of the screen says so.
   $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : '';
   const playing = Boolean(live && state.playing);
