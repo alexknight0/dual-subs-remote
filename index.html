@@ -19,11 +19,6 @@
       <button id="version" type="button" class="version" data-state="checking" aria-label="Checking for updates…" title="Checking for updates…"><i></i><span></span></button>
       <span id="status" class="status"></span>
     </header>
-    <div id="volRow" class="seek vol top" hidden>
-        <button id="mute" type="button" class="mute" aria-label="Mute">🔊</button>
-        <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" />
-        <span id="volPct">100%</span>
-      </div>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -71,22 +66,45 @@
       <footer id="foot" class="muted" hidden>
         <span id="androidApp" hidden><button id="linkApp" class="linkish" type="button"
           title="Volume buttons control Netflix: installs the Android app if needed, then links it to this account">Volume-button app</button> ·</span>
-        · <button id="signout" class="linkish" type="button">Sign out</button>
+        <button id="signout" class="linkish" type="button">Sign out</button>
       </footer>
     </main>
 
     <nav id="dock" class="dock" hidden>
-      <div id="seekRow" class="seek">
-        <span id="tNow">0:00</span>
-        <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek" />
-        <span id="tEnd">0:00</span>
+      <div class="chips">
+        <button id="volBtn" type="button" class="chip" hidden aria-label="Volume">🔊 100%</button>
+        <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
       </div>
       <div class="buttons">
         <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
+        <button id="back10" type="button" aria-label="Back 10 seconds">↺<small>10 s</small></button>
         <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>
+        <button id="fwd10" type="button" aria-label="Forward 10 seconds">↻<small>10 s</small></button>
         <button id="next" type="button" aria-label="Next line">⏭<small>line</small></button>
       </div>
     </nav>
+
+    <!-- Popups for precise adjustment, opened by the chips above the buttons. -->
+    <div id="volSheet" class="sheet" hidden>
+      <div class="sheet-card" role="dialog" aria-label="Volume">
+        <div class="sheet-head"><span>Volume</span><button type="button" class="sheet-close" aria-label="Close">✕</button></div>
+        <div id="volRow" class="seek vol">
+          <button id="mute" type="button" class="mute" aria-label="Mute">🔊</button>
+          <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" />
+          <span id="volPct">100%</span>
+        </div>
+      </div>
+    </div>
+    <div id="seekSheet" class="sheet" hidden>
+      <div class="sheet-card" role="dialog" aria-label="Position">
+        <div class="sheet-head"><span>Position</span><button type="button" class="sheet-close" aria-label="Close">✕</button></div>
+        <div id="seekRow" class="seek">
+          <span id="tNow">0:00</span>
+          <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek" />
+          <span id="tEnd">0:00</span>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="app.js"></script>
   </body>

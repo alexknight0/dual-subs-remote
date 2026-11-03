@@ -400,11 +400,6 @@ li.best {
   text-align: right;
 }
 
-.vol.top {
-  padding: 2px var(--pad) 8px;
-  border-bottom: 1px solid var(--line);
-}
-
 .vol .mute {
   border: 1px solid #3a3a3a;
   background: #262626;
@@ -538,3 +533,77 @@ footer {
 @keyframes boot-spin { to { transform: rotate(360deg); } }
 .boot-slow { visibility: hidden; animation: boot-slow 0s 10s forwards; }
 @keyframes boot-slow { to { visibility: visible; } }
+
+/* Volume and position chips above the dock buttons; each opens a popup with the slider
+   (Alex, 2026-11-04: buttons, not always-on sliders). */
+.chips {
+  display: flex;
+  gap: 10px;
+}
+
+.dock .chip {
+  flex: 1;
+  flex-direction: row;
+  min-height: 0;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dock .chip[hidden] {
+  display: none;
+}
+
+/* Five buttons in the row: ⏮ line, -10 s, ⏯, +10 s, ⏭ line. */
+.dock .buttons button {
+  min-height: 104px;
+  font-size: 34px;
+}
+
+.dock .buttons .play {
+  font-size: 46px;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet[hidden] {
+  display: none;
+}
+
+.sheet-card {
+  width: 100%;
+  padding: 14px var(--pad) calc(28px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  background: #1c1c1c;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sheet-close {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.sheet .seek input {
+  height: 48px; /* easy to grab precisely */
+}

@@ -96,6 +96,8 @@ function send(type, args = {}) {
 $('play').addEventListener('click', () => send('playPause'));
 $('prev').addEventListener('click', () => send('prev'));
 $('next').addEventListener('click', () => send('next'));
+$('back10').addEventListener('click', () => skip(-10000));
+$('fwd10').addEventListener('click', () => skip(10000));
 $('pClose').addEventListener('click', () => send('unpick'));
 $('pAsk').addEventListener('click', () => send('ask'));
 for (const b of $('pMarks').querySelectorAll('button')) {
@@ -130,14 +132,29 @@ function position() {
 
 function renderSeek() {
   const d = connected() ? state.d : null;
-  $('seekRow').hidden = !d;
-  if (!d || dragging) return;
+  $('seekBtn').hidden = !d;
+  if (!d) {
+    $('seekSheet').hidden = true;
+    return;
+  }
+  const pos = dragging ? Number($('seek').value) : position() ?? 0;
+  $('seekBtn').textContent = `${formatTime(pos)} / ${formatTime(d)}`;
+  if (dragging) return;
   const input = $('seek');
   input.max = String(d);
-  const pos = position() ?? 0;
   input.value = String(pos);
   $('tNow').textContent = formatTime(pos);
   $('tEnd').textContent = formatTime(d);
+}
+
+// ±10 s buttons: the extension skips from the computer's own position (more exact than
+// ours, which is extrapolated between updates); the slider shows where it should land.
+function skip(ms) {
+  const d = state && state.d;
+  const pos = position();
+  if (pos !== null) seekSent = { ms: Math.max(0, Math.min(pos + ms, d || Infinity)), at: Date.now() };
+  send('skip', { ms });
+  renderSeek();
 }
 
 $('seek').addEventListener('input', () => {
@@ -164,14 +181,18 @@ let volSent = null; // { v, m, at }: shown until the computer confirms or it's 2
 
 function renderVolume() {
   const has = connected() && typeof state.v === 'number';
-  $('volRow').hidden = !has;
-  if (!has) return;
+  $('volBtn').hidden = !has;
+  if (!has) {
+    $('volSheet').hidden = true;
+    return;
+  }
   const recent = volSent && Date.now() - volSent.at < 2000;
   const v = recent && volSent.v !== undefined ? volSent.v : state.v;
   const m = recent && volSent.m !== undefined ? volSent.m : state.m;
   if (!volDragging) $('vol').value = String(Math.round(v * 100));
   $('volPct').textContent = m ? 'muted' : `${Math.round((volDragging ? $('vol').value / 100 : v) * 100)}%`;
   $('mute').textContent = m || v === 0 ? '🔇' : '🔊';
+  $('volBtn').textContent = `${m || v === 0 ? '🔇' : '🔊'} ${m ? 'muted' : `${Math.round((volDragging ? $('vol').value / 100 : v) * 100)}%`}`;
   $('mute').setAttribute('aria-label', m ? 'Unmute' : 'Mute');
 }
 
@@ -179,6 +200,18 @@ $('vol').addEventListener('input', () => {
   volDragging = true;
   $('volPct').textContent = `${$('vol').value}%`;
 });
+
+// The popups: tap a chip to open, tap outside the card or ✕ to close.
+for (const [btn, sheet] of [['volBtn', 'volSheet'], ['seekBtn', 'seekSheet']]) {
+  $(btn).addEventListener('click', () => {
+    $(sheet).hidden = false;
+    renderSeek();
+    renderVolume();
+  });
+  $(sheet).addEventListener('click', (e) => {
+    if (e.target === $(sheet) || e.target.closest('.sheet-close')) $(sheet).hidden = true;
+  });
+}
 $('vol').addEventListener('change', () => {
   volDragging = false;
   const v = Number($('vol').value) / 100;
