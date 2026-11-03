@@ -63,6 +63,7 @@ onAuthStateChanged(auth, (user) => {
     onValue(ref(db, `remote/${uid}/state`), (snap) => {
       state = snap.val();
       stateAt = Date.now();
+      onAck(state?.ack);
       render();
     }, fail),
     onValue(ref(db, `remote/${uid}/panel`), (snap) => {
@@ -87,26 +88,57 @@ $('signout').addEventListener('click', () => {
 
 // ---------------------------------------------------------------------------
 // Commands
-function send(type, args = {}) {
+// `busy`: a button (or its id) to show a spinner on until the computer acknowledges the
+// command (state.ack = its id), or LOADING_MAX_MS passes (Alex, 2026-11-04).
+const LOADING_MAX_MS = 6000;
+const loading = new Map(); // command id -> { el, timer }
+
+function send(type, args = {}, busy = null) {
   if (!uid) return;
   navigator.vibrate?.(10);
-  set(ref(db, `remote/${uid}/command`), { id: crypto.randomUUID(), type, ...args, at: serverTimestamp() }).catch((e) => {
+  const id = crypto.randomUUID();
+  const el = typeof busy === 'string' ? $(busy) : busy;
+  if (el) {
+    // A newer command from the same button replaces the older one's spinner.
+    for (const [k, v] of loading) if (v.el === el) stopLoading(k);
+    el.classList.add('loading');
+    loading.set(id, { el, timer: setTimeout(() => stopLoading(id), LOADING_MAX_MS) });
+  }
+  set(ref(db, `remote/${uid}/command`), { id, type, ...args, at: serverTimestamp() }).catch((e) => {
+    stopLoading(id);
     $('status').textContent = `Couldn't send: ${e.message}`;
   });
 }
 
-$('play').addEventListener('click', () => send('playPause'));
-$('prev').addEventListener('click', () => send('prev'));
-$('next').addEventListener('click', () => send('next'));
-$('back10').addEventListener('click', () => skip(-10000));
-$('fwd10').addEventListener('click', () => skip(10000));
+function stopLoading(id) {
+  const l = loading.get(id);
+  if (!l) return;
+  clearTimeout(l.timer);
+  loading.delete(id);
+  if (![...loading.values()].some((v) => v.el === l.el)) l.el.classList.remove('loading');
+}
+
+// The computer handles commands in order, so an ack also covers every earlier one.
+function onAck(ack) {
+  if (!ack || !loading.has(ack)) return;
+  for (const id of [...loading.keys()]) {
+    stopLoading(id);
+    if (id === ack) break;
+  }
+}
+
+$('play').addEventListener('click', () => send('playPause', {}, 'play'));
+$('prev').addEventListener('click', () => send('prev', {}, 'prev'));
+$('next').addEventListener('click', () => send('next', {}, 'next'));
+$('back10').addEventListener('click', () => skip(-10000, 'back10'));
+$('fwd10').addEventListener('click', () => skip(10000, 'fwd10'));
 $('pClose').addEventListener('click', () => {
   local = { pick: null, mark: null, at: Date.now() };
   panel = null;
   send('unpick');
   render();
 });
-$('pAsk').addEventListener('click', () => send('ask'));
+$('pAsk').addEventListener('click', () => send('ask', {}, 'pAsk'));
 for (const b of $('pMarks').querySelectorAll('button')) {
   b.addEventListener('click', () => {
     if (!panel) return;
@@ -197,11 +229,11 @@ function renderSeek() {
 
 // ±10 s buttons: the extension skips from the computer's own position (more exact than
 // ours, which is extrapolated between updates); the slider shows where it should land.
-function skip(ms) {
+function skip(ms, busy) {
   const d = state && state.d;
   const pos = position();
   if (pos !== null) seekSent = { ms: Math.max(0, Math.min(pos + ms, d || Infinity)), at: Date.now() };
-  send('skip', { ms });
+  send('skip', { ms }, busy);
   renderSeek();
 }
 
@@ -215,7 +247,7 @@ $('seek').addEventListener('change', () => {
   dragging = false;
   $('seekRow').classList.remove('dragging');
   seekSent = { ms, at: Date.now() };
-  send('seek', { ms });
+  send('seek', { ms }, 'seekBtn');
   renderSeek();
 });
 setInterval(renderSeek, 500);
@@ -264,13 +296,13 @@ $('vol').addEventListener('change', () => {
   volDragging = false;
   const v = Number($('vol').value) / 100;
   volSent = { v, m: false, at: Date.now() };
-  send('volume', { v });
+  send('volume', { v }, 'volBtn');
   renderVolume();
 });
 $('mute').addEventListener('click', () => {
   const muted = !(volSent && Date.now() - volSent.at < 2000 ? volSent.m : state && state.m);
   volSent = { m: muted, at: Date.now() };
-  send('mute', { muted });
+  send('mute', { muted }, 'mute');
   renderVolume();
 });
 
@@ -394,7 +426,7 @@ function renderPanel(live) {
   ai.hidden = !panel.ai;
   if (panel.ai) {
     ai.append(make('span', 'tag', 'AI'));
-    if (panel.ai.pending) ai.append(make('span', 'muted', 'Asking Gemini…'));
+    if (panel.ai.pending) ai.append(make('span', 'spinner'), make('span', 'muted', 'Asking Gemini…'));
     else if (panel.ai.error) ai.append(make('span', 'muted', panel.ai.error));
     else appendMarkdown(ai, panel.ai.text);
   }
@@ -416,7 +448,8 @@ function renderPanel(live) {
 
   const dict = $('pDict');
   dict.textContent = '';
-  if (panel.dict) dict.append(make('div', 'muted', panel.dict === 'pending' ? 'Looking up…' : panel.dict));
+  if (panel.dict === 'pending') dict.append(make('span', 'spinner'), make('span', 'muted', 'Looking up…'));
+  else if (panel.dict) dict.append(make('div', 'muted', panel.dict));
   for (const h of panel.kr || []) {
     const meta = make('div', h.posMatch ? 'meta' : 'meta other');
     meta.append(make('b', null, h.word));
