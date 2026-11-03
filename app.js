@@ -192,6 +192,105 @@ $('mute').addEventListener('click', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Lock screen / notification / headphone controls (Alex, 2026-11-04). Phones only show
+// media controls for a page that is playing audio, so after the first tap the page plays
+// a silent looping track; the Media Session API then routes play/pause and next/previous
+// track (lock screen, notification shade, Bluetooth headphones) to the extension. The
+// phone's volume buttons can't be used: browsers never give them to pages.
+// Turned off in the footer (it takes over the phone's media controls while on).
+const MEDIA_KEY = 'dualSubsRemote.mediaControls'; // '0' = off (prefixed: shared origin)
+let silence = null;
+
+// A silent 8-bit mono WAV (128 = silence), over 5 s so Chrome treats it as real media.
+function silentWav(seconds = 10, rate = 8000) {
+  const n = seconds * rate;
+  const buf = new ArrayBuffer(44 + n);
+  const v = new DataView(buf);
+  const str = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF');
+  v.setUint32(4, 36 + n, true);
+  str(8, 'WAVE');
+  str(12, 'fmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); // PCM
+  v.setUint16(22, 1, true); // mono
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate, true); // bytes per second
+  v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true);
+  str(36, 'data');
+  v.setUint32(40, n, true);
+  new Uint8Array(buf, 44).fill(128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+const mediaOn = () => localStorage.getItem(MEDIA_KEY) !== '0';
+
+// The lock screen's play/pause also pauses our silent track: keep it going, or the
+// controls disappear.
+function keepPlaying() {
+  if (silence && mediaOn() && silence.paused) silence.play().catch(() => {});
+}
+
+function startMediaControls() {
+  if (!mediaOn() || !uid || !('mediaSession' in navigator)) return;
+  if (!silence) {
+    silence = new Audio(silentWav());
+    silence.loop = true;
+    silence.addEventListener('pause', () => setTimeout(keepPlaying, 0));
+  }
+  keepPlaying(); // needs a tap first; retried on the next one
+  const ms = navigator.mediaSession;
+  ms.setActionHandler('play', () => send('playPause'));
+  ms.setActionHandler('pause', () => send('playPause'));
+  ms.setActionHandler('previoustrack', () => send('prev'));
+  ms.setActionHandler('nexttrack', () => send('next'));
+  mediaShown = '';
+  renderMediaSession();
+}
+
+function stopMediaControls() {
+  const s = silence;
+  silence = null; // so the pause listener doesn't restart it
+  s?.pause();
+  if (!('mediaSession' in navigator)) return;
+  for (const a of ['play', 'pause', 'previoustrack', 'nexttrack']) navigator.mediaSession.setActionHandler(a, null);
+  navigator.mediaSession.metadata = null;
+}
+
+// What the lock screen shows: the current Korean line, the episode, and play/pause.
+let mediaShown = '';
+function renderMediaSession() {
+  if (!silence || !mediaOn() || !('mediaSession' in navigator)) return;
+  const live = connected();
+  const line = live && state.line ? (state.line.parts || []).map((p) => (p.br ? ' ' : p.t)).join('') || state.line.en || '' : '';
+  const key = JSON.stringify([line, live && state.title, live && state.playing]);
+  if (key === mediaShown) return;
+  mediaShown = key;
+  if (typeof MediaMetadata !== 'undefined') {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: line || (live ? '…' : 'Not connected'),
+      artist: (live && state.title) || 'Dual Subs remote',
+      artwork: [{ src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }],
+    });
+  }
+  navigator.mediaSession.playbackState = live ? (state.playing ? 'playing' : 'paused') : 'none';
+}
+
+document.addEventListener('pointerdown', startMediaControls, { capture: true });
+
+function renderMediaToggle() {
+  $('mediaToggle').textContent = `Lock-screen controls: ${mediaOn() ? 'on' : 'off'}`;
+}
+$('mediaToggle').addEventListener('click', () => {
+  localStorage.setItem(MEDIA_KEY, mediaOn() ? '0' : '1');
+  if (mediaOn()) startMediaControls();
+  else stopMediaControls();
+  renderMediaToggle();
+});
+renderMediaToggle();
+
+// ---------------------------------------------------------------------------
 // Rendering
 const make = (tag, cls, text) => {
   const n = document.createElement(tag);
@@ -258,6 +357,7 @@ function render() {
   renderPanel(live);
   renderSeek();
   renderVolume();
+  renderMediaSession();
 }
 
 function renderPanel(live) {
