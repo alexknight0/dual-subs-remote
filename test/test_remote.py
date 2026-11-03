@@ -174,6 +174,7 @@ def main():
         check("+10 s sends skip", sent()[-1]["type"] == "skip" and sent()[-1]["ms"] == 10000, sent()[-1])
         LOADING = "(id) => document.getElementById(id).classList.contains('loading')"
         check("...with a spinner until the computer answers", page.evaluate(LOADING, "fwd10"))
+        check("...in place of its icon (no dimmed overlay)", page.is_hidden("#fwd10 .ico") and page.is_visible("#fwd10 small"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)} )")
         check("...which an unrelated update doesn't stop", page.evaluate(LOADING, "fwd10"))
         ack = sent()[-1]["id"]
@@ -224,8 +225,10 @@ def main():
         page.evaluate(f"window.__push('remote/u1/panel', {json.dumps(PANEL, ensure_ascii=False)})")
         check("panel shown", page.is_visible("#panel") and page.text_content("#pWord") == "적")
         top, off = page.evaluate(MIDDLE)
-        check("with the panel open the line moves to the top", top < 5, (top, off))
-        check("...and the big buttons step aside for it", page.is_hidden("#dock"))
+        GROUP = """(() => { const m = document.getElementById('main').getBoundingClientRect(); const a = document.getElementById('now').getBoundingClientRect(); const b = document.getElementById('panel').getBoundingClientRect(); return [b.bottom - a.top, m.height, (a.top + b.bottom) / 2 - (m.top + m.bottom) / 2]; })()"""
+        h, room, off = page.evaluate(GROUP)
+        check("with the panel open, line + panel are centred together", h > room or abs(off) < 20, (h, room, off))
+        check("...and the buttons and chips step aside for it", page.is_hidden("#dock") and page.is_hidden("#chips"))
         fit = page.evaluate("(() => { const m = document.getElementById('main'); return [m.scrollHeight, m.clientHeight, getComputedStyle(m).scrollbarWidth]; })()")
         check("a typical word fits without scrolling, and no scroll bar ever shows", fit[0] <= fit[1] and fit[2] == "none", fit)
         # Android's URL bar showing/hiding (and pull-to-refresh) changes the visible height:

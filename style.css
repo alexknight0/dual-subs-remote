@@ -115,8 +115,14 @@ main {
   margin: auto 0;
 }
 
+/* With a word open, the line and its panel are centred as one block (auto margins fall
+   to 0 when the block is taller than the screen, so long entries still scroll). */
 main:has(#panel:not([hidden])) #now {
-  margin: 0;
+  margin: auto 0 0;
+}
+
+main:has(#panel:not([hidden])) #panel {
+  margin-bottom: auto;
 }
 
 /* The line on screen: tap a word to look it up (and pause). */
@@ -528,7 +534,8 @@ li.best {
 .chips {
   display: flex;
   gap: 10px;
-  padding: 0 var(--pad) 8px;
+  padding: 8px var(--pad);
+  border-top: 1px solid var(--line);
 }
 
 .chips[hidden] {
@@ -624,7 +631,8 @@ li.best {
 #play { grid-area: play; }
 
 /* While a word's panel is open the buttons step aside, so it has the room. */
-body:has(#panel:not([hidden])) #dock {
+body:has(#panel:not([hidden])) #dock,
+body:has(#panel:not([hidden])) #chips {
   display: none;
 }
 
@@ -734,24 +742,48 @@ body:has(#panel:not([hidden])) #dock {
   }
 }
 
+/* The spinner replaces what the button shows: an icon button's icon (the spinner takes its
+   place, the label stays), or a text button's text. */
 .loading {
   position: relative;
-  color: rgba(255, 255, 255, 0.2) !important;
 }
 
-.loading small {
-  color: inherit;
+.dock .buttons .loading .ico {
+  display: none !important;
 }
 
-.loading::after {
+.dock .buttons .loading::before {
+  content: '';
+  display: block;
+  box-sizing: border-box;
+  width: 40px;
+  height: 40px;
+  margin: 2px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.dock .buttons .play.loading::before {
+  width: 54px;
+  height: 54px;
+}
+
+.loading:not(.dock .buttons button) {
+  color: transparent !important;
+}
+
+.loading:not(.dock .buttons button)::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 30px;
-  height: 30px;
-  margin: -15px 0 0 -15px;
-  border: 4px solid rgba(255, 255, 255, 0.55);
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
