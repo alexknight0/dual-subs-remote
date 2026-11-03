@@ -51,6 +51,7 @@ onAuthStateChanged(auth, (user) => {
   $('signin').hidden = Boolean(user);
   $('main').hidden = !user;
   $('dock').hidden = !user;
+  $('chips').hidden = !user;
   $('foot').hidden = !user;
   if (!user) {
     $('status').textContent = '';
@@ -370,7 +371,9 @@ function render() {
   const status = $('status');
   status.className = live ? 'status on' : 'status';
   status.textContent = live ? (state.playing ? 'Playing' : 'Paused') : 'Not connected';
-  $('play').textContent = live && state.playing ? '⏸' : '▶';
+  const playing = Boolean(live && state.playing);
+  $('play').classList.toggle('playing', playing);
+  $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
   const line = live ? state.line : null;
   $('waiting').hidden = live;
   $('now').hidden = !live;

@@ -28,6 +28,10 @@
         </div>
       </div>
     </header>
+    <div id="chips" class="chips" hidden>
+        <button id="volBtn" type="button" class="chip" hidden aria-label="Volume">🔊 100%</button>
+        <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
+      </div>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -74,17 +78,13 @@
 
     </main>
 
-    <nav id="dock" class="dock" hidden>
-      <div class="chips">
-        <button id="volBtn" type="button" class="chip" hidden aria-label="Volume">🔊 100%</button>
-        <button id="seekBtn" type="button" class="chip" hidden aria-label="Position">0:00 / 0:00</button>
-      </div>
+    <nav id="dock" class="dock" data-layout="a" hidden>
       <div class="buttons">
-        <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>
-        <button id="back10" type="button" aria-label="Back 10 seconds">↺<small>10 s</small></button>
-        <button id="play" type="button" class="play" aria-label="Play or pause">⏯</button>
-        <button id="fwd10" type="button" aria-label="Forward 10 seconds">↻<small>10 s</small></button>
-        <button id="next" type="button" aria-label="Next line">⏭<small>line</small></button>
+        <button id="prev" type="button" aria-label="Previous line"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 7 12l8 8" /></svg><small>line</small></button>
+        <button id="back10" type="button" aria-label="Back 10 seconds"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" /><path d="M4 3.5v4h4" /></svg><small>10 s</small></button>
+        <button id="play" type="button" class="play" aria-label="Play"><svg class="ico solid i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" /></svg><svg class="ico solid i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.2" /><rect x="14" y="4.5" width="4.5" height="15" rx="1.2" /></svg></button>
+        <button id="fwd10" type="button" aria-label="Forward 10 seconds"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M20 3.5v4h-4" /></svg><small>10 s</small></button>
+        <button id="next" type="button" aria-label="Next line"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 4 8 8-8 8" /></svg><small>line</small></button>
       </div>
     </nav>
 

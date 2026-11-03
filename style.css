@@ -437,10 +437,6 @@ li.best {
   color: var(--muted);
 }
 
-.dock .play {
-  flex: 1.4;
-  font-size: 52px;
-}
 
 
 .linkish {
@@ -530,35 +526,110 @@ li.best {
 .boot-slow { visibility: hidden; animation: boot-slow 0s 10s forwards; }
 @keyframes boot-slow { to { visibility: visible; } }
 
-/* Volume and position chips above the dock buttons; each opens a popup with the slider
-   (Alex, 2026-11-04: buttons, not always-on sliders). */
+/* Volume and position chips under the header; each opens a popup with the slider
+   (Alex, 2026-11-04: buttons, not always-on sliders; moved to the top so the play
+   buttons can be bigger). */
 .chips {
   display: flex;
   gap: 10px;
+  padding: 0 var(--pad) 8px;
 }
 
-.dock .chip {
+.chips[hidden] {
+  display: none;
+}
+
+.chip {
   flex: 1;
-  flex-direction: row;
-  min-height: 0;
   height: 44px;
+  border: 1px solid #3a3a3a;
   border-radius: 12px;
+  background: #262626;
+  color: var(--text);
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
-.dock .chip[hidden] {
+.chip[hidden] {
   display: none;
 }
 
-/* Five buttons in the row: ⏮ line, -10 s, ⏯, +10 s, ⏭ line. */
-.dock .buttons button {
-  min-height: 104px;
-  font-size: 34px;
+/* Big buttons (Alex, 2026-11-04: easy to press without looking). Drawn icons, not emoji,
+   so they all look alike. Layout: data-layout on #dock (grid, see below). */
+.dock .buttons {
+  display: grid;
+  gap: 10px;
 }
 
-.dock .buttons .play {
-  font-size: 46px;
+.dock .buttons button {
+  min-height: 0;
+  font-size: 0;
+}
+
+.dock .ico {
+  width: 44px;
+  height: 44px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dock .ico.solid {
+  fill: currentColor;
+  stroke: none;
+}
+
+.dock .play .ico {
+  width: 60px;
+  height: 60px;
+}
+
+.dock .play .i-pause,
+.dock .play.playing .i-play {
+  display: none;
+}
+
+.dock .play.playing .i-pause {
+  display: block;
+}
+
+.dock small {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+/* A: play big in the middle of a 3x2 grid, line on top, 10 s underneath. */
+.dock[data-layout='a'] .buttons {
+  grid-template-columns: 1fr 1.25fr 1fr;
+  grid-template-rows: repeat(2, clamp(124px, 20vh, 190px));
+  grid-template-areas: 'prev play next' 'back play fwd';
+}
+
+/* B: line buttons in a wide row on top, then -10 s, play, +10 s. */
+.dock[data-layout='b'] .buttons {
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: clamp(112px, 17vh, 170px) clamp(124px, 20vh, 190px);
+  grid-template-areas: 'prev prev prev next next next' 'back back play play fwd fwd';
+}
+
+/* C: play full width on top, then line and 10 s in two rows of two. */
+.dock[data-layout='c'] .buttons {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, clamp(104px, 14vh, 140px));
+  grid-template-areas: 'play play' 'prev next' 'back fwd';
+}
+
+#prev { grid-area: prev; }
+#next { grid-area: next; }
+#back10 { grid-area: back; }
+#fwd10 { grid-area: fwd; }
+#play { grid-area: play; }
+
+/* While a word's panel is open the buttons step aside, so it has the room. */
+body:has(#panel:not([hidden])) #dock {
+  display: none;
 }
 
 .sheet {
@@ -669,7 +740,7 @@ li.best {
 
 .loading {
   position: relative;
-  color: rgba(255, 255, 255, 0.35) !important;
+  color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .loading small {
@@ -681,10 +752,10 @@ li.best {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px;
-  border: 3px solid rgba(255, 255, 255, 0.25);
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 4px solid rgba(255, 255, 255, 0.55);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -695,7 +766,7 @@ li.best {
   width: 13px;
   height: 13px;
   margin: 0 8px -2px 0;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.55);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;

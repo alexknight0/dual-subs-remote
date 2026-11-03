@@ -122,7 +122,9 @@ def main():
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
-        check("status shows playing", page.text_content("#status") == "Playing" and page.text_content("#play") == "⏸")
+        check("status shows playing", page.text_content("#status") == "Playing"
+              and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
+              and page.is_hidden("#play .i-play"))
         check("title shown", "Nine Tailed" in page.text_content("#title"))
         MIDDLE = """(() => { const m = document.getElementById('main').getBoundingClientRect(); const n = document.getElementById('now').getBoundingClientRect(); return [n.top - m.top, (n.top + n.bottom) / 2 - (m.top + m.bottom) / 2]; })()"""
         top, off = page.evaluate(MIDDLE)
@@ -145,7 +147,11 @@ def main():
         check("controls at the bottom (thumb reach)", box["y"] + box["height"] >= 844 - 1, box)
         sizes = page.eval_on_selector_all(".dock .buttons button", "els => els.map((e) => [e.id, Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])")
         check("five big buttons: line, 10 s, play, 10 s, line", [s[0] for s in sizes] == ["prev", "back10", "play", "fwd10", "next"]
-              and all(h >= 100 and w >= 56 for _, w, h in sizes), sizes)
+              and all(h >= 124 and w >= 100 for _, w, h in sizes), sizes)
+        check("drawn icons, no emoji", all(not (page.text_content(f"#{b}") or "").strip(" line10s") for b in ("prev", "next", "play"))
+              and page.locator("#dock svg").count() == 6, [page.text_content(f"#{b}") for b in ("prev", "next", "play")])
+        chips = page.locator("#chips").bounding_box()
+        check("volume and position chips at the top", chips["y"] < 60, chips)
         centred = page.evaluate("""(() => { const l = document.getElementById('line').getBoundingClientRect(); const ws = [...document.querySelectorAll('#line .w')].map((e) => e.getBoundingClientRect()); return [ws[0].left - l.left, l.right - ws.at(-1).right]; })()""")
         check("line centred", abs(centred[0] - centred[1]) < 20, centred)
         check("position chip shows time / length", page.text_content("#seekBtn").endswith("/ 1:02:00"), page.text_content("#seekBtn"))
@@ -220,6 +226,7 @@ def main():
         check("panel shown", page.is_visible("#panel") and page.text_content("#pWord") == "적")
         top, off = page.evaluate(MIDDLE)
         check("with the panel open the line moves to the top", top < 5, (top, off))
+        check("...and the big buttons step aside for it", page.is_hidden("#dock"))
         fit = page.evaluate("(() => { const m = document.getElementById('main'); return [m.scrollHeight, m.clientHeight, getComputedStyle(m).scrollbarWidth]; })()")
         check("a typical word fits without scrolling, and no scroll bar ever shows", fit[0] <= fit[1] and fit[2] == "none", fit)
         # Android's URL bar showing/hiding (and pull-to-refresh) changes the visible height:
