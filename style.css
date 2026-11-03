@@ -400,7 +400,16 @@ li.best {
   text-align: right;
 }
 
-.dock .vol .mute {
+.vol.top {
+  padding: 2px var(--pad) 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.vol .mute {
+  border: 1px solid #3a3a3a;
+  background: #262626;
+  color: var(--text);
+  padding: 0;
   flex: none;
   min-height: 0;
   width: 44px;

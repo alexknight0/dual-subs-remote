@@ -19,6 +19,11 @@
       <button id="version" type="button" class="version" data-state="checking" aria-label="Checking for updates…" title="Checking for updates…"><i></i><span></span></button>
       <span id="status" class="status"></span>
     </header>
+    <div id="volRow" class="seek vol top" hidden>
+        <button id="mute" type="button" class="mute" aria-label="Mute">🔊</button>
+        <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" />
+        <span id="volPct">100%</span>
+      </div>
 
       <!-- Shown until the app knows whether you're signed in, so a slow start (or Firebase never
            loading) isn't a blank page. The "taking a while" line appears after 10 s by CSS alone. -->
@@ -64,9 +69,8 @@
       </div>
 
       <footer id="foot" class="muted" hidden>
-        <button id="mediaToggle" class="linkish" type="button" title="Play/pause and next/previous line from the lock screen, notification and headphones">Lock-screen controls: on</button>
-        <span id="androidApp" hidden>· <button id="linkApp" class="linkish" type="button"
-          title="Volume buttons control Netflix: installs the Android app if needed, then links it to this account">Volume-button app</button></span>
+        <span id="androidApp" hidden><button id="linkApp" class="linkish" type="button"
+          title="Volume buttons control Netflix: installs the Android app if needed, then links it to this account">Volume-button app</button> ·</span>
         · <button id="signout" class="linkish" type="button">Sign out</button>
       </footer>
     </main>
@@ -76,11 +80,6 @@
         <span id="tNow">0:00</span>
         <input id="seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek" />
         <span id="tEnd">0:00</span>
-      </div>
-      <div id="volRow" class="seek vol" hidden>
-        <button id="mute" type="button" class="mute" aria-label="Mute">🔊</button>
-        <input id="vol" type="range" min="0" max="100" step="1" value="100" aria-label="Volume" />
-        <span id="volPct">100%</span>
       </div>
       <div class="buttons">
         <button id="prev" type="button" aria-label="Previous line">⏮<small>line</small></button>

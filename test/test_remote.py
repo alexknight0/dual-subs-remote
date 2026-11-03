@@ -96,8 +96,6 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 390, "height": 844})
-        # Capture the Media Session handlers so the test can press the lock-screen buttons.
-        page.add_init_script("window.__media = {}; if (navigator.mediaSession) { const set = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession); navigator.mediaSession.setActionHandler = (a, h) => { window.__media[a] = h; try { set(a, h); } catch {} }; }")
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: m.type == "error" and errors.append(m.text))
@@ -164,6 +162,8 @@ def main():
         check("no slider without a length", page.is_hidden("#seekRow"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
         page.wait_for_timeout(300)
+        top = page.evaluate("[document.getElementById('volRow').getBoundingClientRect().top, document.querySelector('header').getBoundingClientRect().bottom]")
+        check("volume row at the top, under the header", abs(top[0] - top[1]) < 2, top)
         check("volume row shows Netflix's volume", page.is_visible("#volRow") and page.text_content("#volPct") == "80%"
               and page.input_value("#vol") == "80", (page.text_content("#volPct"), page.input_value("#vol")))
         vol = page.locator("#vol").bounding_box()
@@ -178,20 +178,6 @@ def main():
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'v': None}, ensure_ascii=False)})")
         check("no volume row if the computer doesn't send one", page.is_hidden("#volRow"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
-
-        page.click("#line")  # any tap starts the lock-screen controls
-        page.wait_for_timeout(300)
-        check("lock-screen controls start after a tap", page.evaluate("Object.keys(window.__media).sort()") == ["nexttrack", "pause", "play", "previoustrack"],
-              page.evaluate("Object.keys(window.__media)"))
-        meta = page.evaluate("[navigator.mediaSession.metadata?.title, navigator.mediaSession.metadata?.artist, navigator.mediaSession.playbackState]")
-        check("...showing the line and episode", meta == ["나한테 장난친 적 있니?", "Tale of the Nine Tailed · E3", "playing"], meta)
-        for action, cmd in (("nexttrack", "next"), ("previoustrack", "prev"), ("pause", "playPause")):
-            page.evaluate(f"window.__media['{action}']()")
-            check(f"lock-screen {action} sends {cmd}", sent()[-1]["type"] == cmd, sent()[-1])
-        page.click("#mediaToggle")
-        check("can be turned off", page.text_content("#mediaToggle") == "Lock-screen controls: off"
-              and page.evaluate("window.__media.play") is None, page.text_content("#mediaToggle"))
-        page.click("#mediaToggle")
 
         print("4/4: word panel")
         page.click("#line .w.unknown")
