@@ -113,6 +113,11 @@ def main():
             page.route(f"{SDK}firebase-{name}.js", serve(body))
         sent = lambda: page.evaluate("window.__sent.map((s) => s.value)")
 
+        def push(st, ack=None, extra="{}"):
+            """A state from the computer, sent now (at), with ack and any JS overrides."""
+            page.evaluate(f"(s) => window.__push('remote/u1/state', {{ ...s, at: Date.now(), ...{extra} }})",
+                          st | ({"ack": ack} if ack else {}))
+
         print("1/4: sign-in")
         page.goto(url)
         page.wait_for_selector("#signinBtn", state="visible")
@@ -148,9 +153,10 @@ def main():
         check("...filling up while playing", 0.07 < f1 - f0 < 0.2, (f0, f1))
         page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote-bar.png"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'playing': False}, ensure_ascii=False)})")
+        page.wait_for_timeout(500)  # (a small correction is eased out over 0.4 s)
         fp = page.evaluate(FILL)
         page.wait_for_timeout(500)
-        check("...and still while paused", page.evaluate(FILL) == fp and 0.05 < fp < 0.2, (fp, page.evaluate(FILL)))
+        check("...and still while paused", page.evaluate(FILL) == fp and 0.05 < fp < 0.25, (fp, page.evaluate(FILL)))
         LINE_TOP = "document.getElementById('line').getBoundingClientRect().top"
         top_now = page.evaluate(LINE_TOP)
         last = json.loads(json.dumps(STATE))
@@ -214,7 +220,7 @@ def main():
         check("line centred", abs(centred[0] - centred[1]) < 20, centred)
         check("position chip shows time / length", page.text_content("#seekBtn").endswith("/ 1:02:00"), page.text_content("#seekBtn"))
         check("no always-on sliders", page.is_hidden("#seek") and page.is_hidden("#vol"))
-        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
+        push(STATE, ack=sent()[-1]["id"])  # (answering the taps above)
         page.wait_for_timeout(2200)
         now = page.text_content("#seekBtn").split(" / ")[0]
         check("...and moves on while playing", now in ("10:01", "10:02", "10:03"), now)  # display ticks every 0.5 s
@@ -239,10 +245,36 @@ def main():
         ack = sent()[-1]["id"]
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)[:-1]}, \"ack\": \"{ack}\"}})")
         check("...and the computer's ack does", not page.evaluate(LOADING, "fwd10"))
+        # Play / pause shows at once (Alex, 2026-11-07: waiting for the round trip felt laggy).
+        push(STATE, ack=sent()[-1]["id"])
+        page.evaluate("localStorage.setItem('dualSubsRemote.lagMs', '300')")
+        PLAYING = "document.getElementById('play').classList.contains('playing')"
         page.click("#play")
-        check("play/pause shows a spinner too", page.evaluate(LOADING, "play"))
-        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)[:-1]}, \"ack\": \"{sent()[-1]['id']}\"}})")
-        check("...until acknowledged", not page.evaluate(LOADING, "play"))
+        check("pause: the button shows paused at once, with no spinner", page.evaluate(PLAYING) is False
+              and not page.evaluate(LOADING, "play") and sent()[-1]["type"] == "playPause", sent()[-1])
+        push(STATE)  # (an update from before the pause got there: still playing)
+        check("...not undone by an update from before the computer had it", page.evaluate(PLAYING) is False)
+        page.wait_for_timeout(400)
+        held = page.text_content("#seekBtn")
+        page.wait_for_timeout(1600)
+        check("...and the position stops (once the pause will have got there)", page.text_content("#seekBtn") == held,
+              (held, page.text_content("#seekBtn")))
+        push(STATE | {"playing": False}, ack=sent()[-1]["id"], extra="{ ackAt: Date.now() - 1400 }")
+        lag = int(page.evaluate("localStorage.getItem('dualSubsRemote.lagMs')"))
+        check("...the computer's answer says how long taps take to get there (averaged with the last)", 300 < lag < 600, lag)
+        check("...and it stays paused", page.evaluate(PLAYING) is False)
+        # Timing as of when the computer sent it, not when it got here.
+        push(STATE, extra="{ at: Date.now() - 2000 }")
+        page.wait_for_timeout(1100)
+        check("an update's position counts from when it was sent (2 s ago, then 1.1 s: 10:03; the chip ticks every 0.5 s; from when it got here would be 10:01)",
+              page.text_content("#seekBtn")[:5] in ("10:02", "10:03"),
+              page.text_content("#seekBtn"))
+        push(STATE)
+        page.click("#play")
+        check("a tap the computer never answers...", page.evaluate(PLAYING) is False)
+        page.wait_for_timeout(4600)
+        check("...goes back to what it says after 4 s, with a note", page.evaluate(PLAYING) is True
+              and "didn't answer" in page.text_content("#error"), page.text_content("#error"))
         page.click("#back10")
         check("-10 s sends skip", sent()[-1]["type"] == "skip" and sent()[-1]["ms"] == -10000, sent()[-1])
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'d': None}, ensure_ascii=False)})")

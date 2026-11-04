@@ -67,6 +67,7 @@ onAuthStateChanged(auth, (user) => {
       stateAt = Date.now();
       if (state?.src) sources.set(state.src, Date.now());
       onAck(state?.ack);
+      onStateTiming();
       render();
     }, fail),
     onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
@@ -101,7 +102,7 @@ const LOADING_MAX_MS = 6000;
 const loading = new Map(); // command id -> { el, timer }
 
 function send(type, args = {}, busy = null) {
-  if (!uid) return;
+  if (!uid) return null;
   navigator.vibrate?.(10);
   const id = crypto.randomUUID();
   const el = typeof busy === 'string' ? $(busy) : busy;
@@ -111,10 +112,14 @@ function send(type, args = {}, busy = null) {
     el.classList.add('loading');
     loading.set(id, { el, timer: setTimeout(() => stopLoading(id), LOADING_MAX_MS) });
   }
+  sentCommands.push({ id, type, at: Date.now() });
+  if (sentCommands.length > 20) sentCommands.shift();
   set(ref(db, `remote/${uid}/command`), { id, type, ...args, at: serverTimestamp() }).catch((e) => {
     stopLoading(id);
+    dropLocal(id);
     showError(`Couldn't send: ${e.message}`, 5000);
   });
+  return id;
 }
 
 function stopLoading(id) {
@@ -134,9 +139,14 @@ function onAck(ack) {
   }
 }
 
-$('play').addEventListener('click', () => send('playPause', {}, 'play'));
-$('prev').addEventListener('click', () => send('prev', {}, 'prev'));
-$('next').addEventListener('click', () => send('next', {}, 'next'));
+$('play').addEventListener('click', () => {
+  // Shown at once (Alex, 2026-11-07: the round trip made it feel laggy); no spinner.
+  const playing = !shownPlaying();
+  const id = send('playPause');
+  if (id) planPlay(id, playing, 'playPause');
+});
+$('prev').addEventListener('click', () => planLine(send('prev', {}, 'prev'), 'start'));
+$('next').addEventListener('click', () => planLine(send('next', {}, 'next'), 'start'));
 $('back10').addEventListener('click', () => skip(-10000, 'back10'));
 $('fwd10').addEventListener('click', () => skip(10000, 'fwd10'));
 // Errors show under the title (for `ms`, or until cleared).
@@ -180,7 +190,10 @@ function pickWord(p) {
     word: p.w, form: p.t, kind: p.k, state: p.s, c: p.c, i: p.i, dict: 'pending',
     link: `https://alexknight0.github.io/korean-dict/#w=${encodeURIComponent(p.w)}`,
   };
-  send('pick', { c: p.c, i: p.i });
+  // (picking pauses Netflix, so the line stays up: shown at once too)
+  const wasPlaying = shownPlaying();
+  const id = send('pick', { c: p.c, i: p.i });
+  if (id && wasPlaying) planPlay(id, false, 'pick');
   render();
 }
 
@@ -202,11 +215,26 @@ function partState(p) {
 }
 
 // ---------------------------------------------------------------------------
-// Seek slider. The extension sends the position (t) with each state update, not every
-// second, so the slider moves on from it locally while playing.
-const SEEK_SETTLE_MS = 1500; // after a seek, ignore states that may predate it
+// Where Netflix is: a clock run here between the computer's updates (it sends the
+// position t with each state, not every second), so the slider, the time and the bar
+// under the subtitle move on smoothly.
+//  - Each state's t is taken as of when the computer sent it (state.at, its clock, which
+//    like Firebase's server time is synced over the internet), not when it got here, so
+//    the position doesn't lag by the trip (Alex, 2026-11-07: the bar jumped back and forth).
+//  - A tap that plays, pauses, seeks or changes line changes the clock at once, without
+//    waiting the ~1 s for the computer's answer (state.ack = the command's id); states
+//    from before that answer are ignored for timing. A play or pause is planned for when
+//    it will happen there: LAG ms after the tap, measured from the computer's ackAt.
+//  - When an answer arrives, the small difference left is eased out over EASE_MS.
+const SEEK_SETTLE_MS = 4000; // a tap's planned change gives up if not answered by then
+const EASE_MS = 400;
+const LAG_KEY = 'dualSubsRemote.lagMs';
+let lagMs = Math.min(1500, Math.max(0, Number(localStorage.getItem(LAG_KEY)) || 300));
 let dragging = false;
-let seekSent = null; // { ms, at } of the last seek from here
+let clock = { t: null, at: 0, playing: false }; // position t (ms) at this phone's time `at`
+let planned = null; // { id, kind, at, playing?, t?, line?, sent } a tap's change not answered yet
+let ease = null; // { by, at }: a correction still being eased out
+const sentCommands = []; // [{ id, type, at }] recent commands, oldest first
 
 function formatTime(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -216,27 +244,146 @@ function formatTime(ms) {
   return h ? `${h}:${mm.padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
 }
 
-function position() {
-  if (!state || state.t === null || state.t === undefined) return null;
-  const since = (at) => (state.playing ? Date.now() - at : 0);
-  const pos = seekSent && Date.now() - seekSent.at < SEEK_SETTLE_MS ? seekSent.ms + since(seekSent.at) : state.t + since(stateAt);
-  return Math.min(pos, state.d || pos);
+// The clock without easing, at this phone's time `now`.
+function clockAt(now) {
+  if (clock.t === null) return null;
+  let pos = clock.t;
+  let from = clock.at;
+  let playing = clock.playing;
+  if (planned && planned.playing !== undefined && now > planned.at && planned.at > from) {
+    if (playing) pos += planned.at - from;
+    from = planned.at;
+    playing = planned.playing;
+  }
+  if (playing) pos += Math.max(0, now - from);
+  return pos;
+}
+
+function position(now = Date.now()) {
+  let pos = clockAt(now);
+  if (pos === null) return null;
+  if (ease) {
+    const left = 1 - (now - ease.at) / EASE_MS;
+    if (left <= 0) ease = null;
+    else pos += ease.by * left;
+  }
+  return Math.max(0, Math.min(pos, (state && state.d) || pos));
+}
+
+// Playing, as shown: what a tap here asked for until the computer answers.
+function shownPlaying() {
+  if (planned && planned.playing !== undefined) return planned.playing;
+  return Boolean(state && state.playing);
+}
+
+// Moving now (for the bar's animation): playing, or about to be.
+function clockMoving() {
+  return clock.playing || Boolean(planned && planned.playing);
+}
+
+// A tap that plays or pauses: from LAG ms from now (what it takes to reach the computer).
+function planPlay(id, playing, kind) {
+  const now = Date.now();
+  if (clock.t !== null) clock = { t: clockAt(now), at: now, playing: planned?.playing ?? clock.playing };
+  planned = { id, kind, at: now + lagMs, playing, sent: now };
+  render();
+}
+
+// A seek from here: there at once.
+function planSeek(id, ms) {
+  if (!id) return;
+  const now = Date.now();
+  const playing = shownPlaying();
+  clock = { t: ms, at: now, playing };
+  ease = null;
+  planned = { id, kind: 'seek', at: now, sent: now, line: 'hide', playing: planned?.playing };
+  render();
+}
+
+// ‹ / › from here: the line it goes to isn't known yet, but it starts there, so the bar
+// goes back to empty at once.
+function planLine(id) {
+  if (!id) return;
+  // (keeping a play or pause tapped just before, still on its way)
+  planned = { ...(planned || {}), id, kind: 'line', sent: Date.now(), line: 'start' };
+  render();
+}
+
+function dropLocal(id) {
+  if (planned && planned.id === id) planned = null;
+  render();
+}
+
+// A state arrived: take its timing unless a tap here hasn't been answered yet.
+function onStateTiming() {
+  const now = Date.now();
+  if (state?.ack) measureLag(state.ack, state.ackAt);
+  if (planned && !answers(state?.ack, planned.id) && now - planned.sent < SEEK_SETTLE_MS) return;
+  if (!state || typeof state.t !== 'number') {
+    clock = { t: null, at: 0, playing: false };
+    planned = null;
+    ease = null;
+    return;
+  }
+  // (Taken as of when it was sent, if the clocks agree well enough: else when it arrived.)
+  const sentAgo = typeof state.at === 'number' ? now + serverOffset - state.at : NaN;
+  const at = sentAgo >= -200 && sentAgo < 3000 ? now - Math.max(0, sentAgo) : now;
+  const before = position(now);
+  const wasLine = planned?.line;
+  clock = { t: state.t, at, playing: Boolean(state.playing) };
+  planned = null;
+  const after = clockAt(now);
+  const by = before === null || after === null ? 0 : before - after;
+  // Small differences are eased out; a real jump (a seek on the computer) isn't.
+  ease = wasLine !== 'start' && Math.abs(by) > 20 && Math.abs(by) < 1500 ? { by, at: now } : null;
+}
+
+// Whether the computer's ack covers command `id` (it handles them in order).
+function answers(ack, id) {
+  const a = sentCommands.findIndex((c) => c.id === ack);
+  const i = sentCommands.findIndex((c) => c.id === id);
+  return a >= 0 && (i < 0 || a >= i);
+}
+
+// A tap's change that's had no answer for SEEK_SETTLE_MS: back to what the computer says.
+function expirePlanned() {
+  if (!planned || Date.now() - planned.sent < SEEK_SETTLE_MS) return;
+  const kind = planned.kind;
+  planned = null;
+  onStateTiming();
+  if (kind === 'playPause') showError("Netflix didn't answer. Try again.", 5000);
+  render();
+}
+
+// How long taps take to be handled on the computer: its ackAt (≈ server time) less when
+// the tap was sent (in server time), averaged, kept for next time.
+function measureLag(id, ackAt) {
+  const c = sentCommands.find((x) => x.id === id);
+  if (!c || c.lagged || typeof ackAt !== 'number') return;
+  c.lagged = true;
+  const lag = ackAt - (c.at + serverOffset);
+  if (!(lag >= 0 && lag < 3000)) return;
+  lagMs = Math.round(lagMs * 0.5 + lag * 0.5);
+  localStorage.setItem(LAG_KEY, String(lagMs));
 }
 
 // The bar under the subtitle fills from the start of what's shown (line.from) to the start
 // of the next subtitle (line.next), not to the end of this one: the phone keeps a finished
-// line up until the next starts (Alex, 2026-11-07). Hidden with no next subtitle.
+// line up until the next starts (Alex, 2026-11-07). Hidden with no next subtitle. After
+// ‹ / › here it's empty until the new line arrives (it starts there); after a seek here,
+// hidden until then (which line it lands in isn't known yet).
 let nextBarFrame = 0;
 function renderNextBar() {
   cancelAnimationFrame(nextBarFrame);
   const line = connected() ? state.line : null;
-  const pos = position();
-  const ok = line && typeof line.next === 'number' && typeof line.from === 'number' && line.next > line.from && pos !== null;
+  const pos = line ? position() : null; // (not before connected: render can run before this file's lets exist)
+  const ok = line && typeof line.next === 'number' && typeof line.from === 'number' && line.next > line.from && pos !== null
+    && planned?.line !== 'hide';
   $('nextBar').hidden = !ok;
   if (!ok) return;
-  const f = Math.min(1, Math.max(0, (pos - line.from) / (line.next - line.from)));
+  const f = planned?.line === 'start' ? 0 : Math.min(1, Math.max(0, (pos - line.from) / (line.next - line.from)));
   $('nextFill').style.transform = `scaleX(${f})`;
-  if (state.playing && f < 1) nextBarFrame = requestAnimationFrame(renderNextBar);
+  if ((clockMoving() || ease) && f < 1) nextBarFrame = requestAnimationFrame(renderNextBar);
 }
 
 function renderSeek() {
@@ -261,9 +408,8 @@ function renderSeek() {
 function skip(ms, busy) {
   const d = state && state.d;
   const pos = position();
-  if (pos !== null) seekSent = { ms: Math.max(0, Math.min(pos + ms, d || Infinity)), at: Date.now() };
-  send('skip', { ms }, busy);
-  renderSeek();
+  const id = send('skip', { ms }, busy);
+  if (pos !== null) planSeek(id, Math.max(0, Math.min(pos + ms, d || Infinity)));
 }
 
 $('seek').addEventListener('input', () => {
@@ -275,11 +421,12 @@ $('seek').addEventListener('change', () => {
   const ms = Number($('seek').value);
   dragging = false;
   $('seekRow').classList.remove('dragging');
-  seekSent = { ms, at: Date.now() };
-  send('seek', { ms }, 'seekBtn');
-  renderSeek();
+  planSeek(send('seek', { ms }, 'seekBtn'), ms);
 });
-setInterval(renderSeek, 500);
+setInterval(() => {
+  expirePlanned();
+  renderSeek();
+}, 500);
 
 // ---------------------------------------------------------------------------
 // Volume: Netflix's own volume and mute on the computer (state.v 0-1, state.m), in a row
@@ -423,7 +570,7 @@ function render() {
   // The buttons only make sense with Netflix on the other end.
   $('dock').hidden = !live;
   $('chips').hidden = !live;
-  const playing = Boolean(live && state.playing);
+  const playing = Boolean(live && shownPlaying());
   $('play').classList.toggle('playing', playing);
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
   const line = live ? state.line : null;
