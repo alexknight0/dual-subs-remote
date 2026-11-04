@@ -900,3 +900,85 @@ body:has(#panel:not([hidden])) .close-bar {
 .close-bar button:active {
   background: #333;
 }
+
+/* Preview arrows (Alex, 2026-11-07): fixed at the screen's left and right edges, level
+   with the middle of the line's space (placeArrows), so they never move as lines change.
+   The line keeps clear of them. */
+#now {
+  position: relative;
+  padding: 0 24px;
+}
+
+.pv-arrow {
+  position: fixed;
+  z-index: 5;
+  width: 40px;
+  height: 96px;
+  margin-top: -48px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #8a8a8a;
+}
+
+.pv-arrow.left {
+  left: 0;
+}
+
+.pv-arrow.right {
+  right: 0;
+}
+
+.pv-arrow svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pv-arrow:active {
+  color: var(--text);
+}
+
+/* With a word open the line moves up to make room: no arrows then. */
+body:has(#panel:not([hidden])) .pv-arrow {
+  display: none;
+}
+
+/* "Back to now" / "Play from here" under a previewed line, out of the flow so the line
+   doesn't move. */
+.preview-bar {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.preview-bar[hidden] {
+  display: none;
+}
+
+.preview-bar button {
+  padding: 10px 16px;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  background: #262626;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.preview-bar button:active {
+  background: #333;
+}
+
+body:has(#panel:not([hidden])) .preview-bar {
+  display: none;
+}

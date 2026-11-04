@@ -37,7 +37,13 @@ let state = null;
 let stateAt = 0; // local time the last state arrived
 let serverOffset = 0; // server time - this phone's time (RTDB .info/serverTimeOffset)
 let panel = null;
-let shownLineKey = null;
+let subs = null; // the episode's lines (onSubs), or null
+let wordStates = { id: null, s: '' }; // a letter per word in subs.words: k / u / l
+let preview = null; // { i: timeline entry shown, id: subs id } while looking through lines
+let tickFrame = 0; // (tick)
+let shownEntry = null; // the timeline entry drawn
+// (Declared up here: onAuthStateChanged can call render() while this file is still being
+// evaluated, before any later let exists.)
 let signedInUser = null; // Firebase user (for the Android app link)
 let errorText = ''; // shown under the title (showError)
 let errorTimer = null;
@@ -76,6 +82,13 @@ onAuthStateChanged(auth, (user) => {
     }, fail),
     onValue(ref(db, `remote/${uid}/panel`), (snap) => {
       onPanel(snap.val());
+    }, fail),
+    onValue(ref(db, `remote/${uid}/subs`), (snap) => {
+      onSubs(snap.val());
+    }, fail),
+    onValue(ref(db, `remote/${uid}/wordStates`), (snap) => {
+      wordStates = snap.val() || { id: null, s: '' };
+      render();
     }, fail),
   );
   render();
@@ -141,7 +154,9 @@ function onAck(ack) {
 
 $('play').addEventListener('click', () => {
   // Shown at once (Alex, 2026-11-07: the round trip made it feel laggy); no spinner.
+  // Playing ends a preview (Netflix carries on from where it paused).
   const playing = !shownPlaying();
+  if (playing) preview = null;
   const id = send('playPause');
   if (id) planPlay(id, playing, 'playPause');
 });
@@ -231,7 +246,7 @@ const EASE_MS = 400;
 const LAG_KEY = 'dualSubsRemote.lagMs';
 let lagMs = Math.min(1500, Math.max(0, Number(localStorage.getItem(LAG_KEY)) || 300));
 let dragging = false;
-let clock = { t: null, at: 0, playing: false }; // position t (ms) at this phone's time `at`
+let clock = { t: null, at: 0, playing: false, r: 1 }; // position t (ms) at this phone's time `at`, speed r
 let planned = null; // { id, kind, at, playing?, t?, line?, sent } a tap's change not answered yet
 let ease = null; // { by, at }: a correction still being eased out
 const sentCommands = []; // [{ id, type, at }] recent commands, oldest first
@@ -250,12 +265,13 @@ function clockAt(now) {
   let pos = clock.t;
   let from = clock.at;
   let playing = clock.playing;
+  const r = clock.r || 1;
   if (planned && planned.playing !== undefined && now > planned.at && planned.at > from) {
-    if (playing) pos += planned.at - from;
+    if (playing) pos += (planned.at - from) * r;
     from = planned.at;
     playing = planned.playing;
   }
-  if (playing) pos += Math.max(0, now - from);
+  if (playing) pos += Math.max(0, now - from) * r;
   return pos;
 }
 
@@ -284,19 +300,20 @@ function clockMoving() {
 // A tap that plays or pauses: from LAG ms from now (what it takes to reach the computer).
 function planPlay(id, playing, kind) {
   const now = Date.now();
-  if (clock.t !== null) clock = { t: clockAt(now), at: now, playing: planned?.playing ?? clock.playing };
+  if (clock.t !== null) clock = { ...clock, t: clockAt(now), at: now, playing: planned?.playing ?? clock.playing };
   planned = { id, kind, at: now + lagMs, playing, sent: now };
   render();
 }
 
-// A seek from here: there at once.
+// A seek from here: there at once (and its line, from subs).
 function planSeek(id, ms) {
   if (!id) return;
   const now = Date.now();
   const playing = shownPlaying();
-  clock = { t: ms, at: now, playing };
+  clock = { ...clock, t: ms, at: now, playing };
   ease = null;
-  planned = { id, kind: 'seek', at: now, sent: now, line: 'hide', playing: planned?.playing };
+  preview = null;
+  planned = { id, kind: 'seek', at: now, sent: now, playing: planned?.playing };
   render();
 }
 
@@ -305,6 +322,7 @@ function planSeek(id, ms) {
 function planLine(id) {
   if (!id) return;
   // (keeping a play or pause tapped just before, still on its way)
+  preview = null;
   planned = { ...(planned || {}), id, kind: 'line', sent: Date.now(), line: 'start' };
   render();
 }
@@ -320,7 +338,7 @@ function onStateTiming() {
   if (state?.ack) measureLag(state.ack, state.ackAt);
   if (planned && !answers(state?.ack, planned.id) && now - planned.sent < SEEK_SETTLE_MS) return;
   if (!state || typeof state.t !== 'number') {
-    clock = { t: null, at: 0, playing: false };
+    clock = { t: null, at: 0, playing: false, r: 1 };
     planned = null;
     ease = null;
     return;
@@ -330,8 +348,10 @@ function onStateTiming() {
   const at = sentAgo >= -200 && sentAgo < 3000 ? now - Math.max(0, sentAgo) : now;
   const before = position(now);
   const wasLine = planned?.line;
-  clock = { t: state.t, at, playing: Boolean(state.playing) };
+  clock = { t: state.t, at, playing: Boolean(state.playing), r: state.r > 0 ? state.r : 1 };
   planned = null;
+  // Netflix playing again from the computer: the preview is over.
+  if (preview && clock.playing) preview = null;
   const after = clockAt(now);
   const by = before === null || after === null ? 0 : before - after;
   // Small differences are eased out; a real jump (a seek on the computer) isn't.
@@ -367,23 +387,177 @@ function measureLag(id, ackAt) {
   localStorage.setItem(LAG_KEY, String(lagMs));
 }
 
-// The bar under the subtitle fills from the start of what's shown (line.from) to the start
-// of the next subtitle (line.next), not to the end of this one: the phone keeps a finished
-// line up until the next starts (Alex, 2026-11-07). Hidden with no next subtitle. After
-// ‹ / › here it's empty until the new line arrives (it starts there); after a seek here,
-// hidden until then (which line it lands in isn't known yet).
-let nextBarFrame = 0;
-function renderNextBar() {
-  cancelAnimationFrame(nextBarFrame);
-  const line = connected() ? state.line : null;
-  const pos = line ? position() : null; // (not before connected: render can run before this file's lets exist)
-  const ok = line && typeof line.next === 'number' && typeof line.from === 'number' && line.next > line.from && pos !== null
-    && planned?.line !== 'hide';
+// ---------------------------------------------------------------------------
+// The episode's subtitles (Alex, 2026-11-07): the computer sends them all once (subs:
+// see "The episode's subtitles" in the extension's page.js), and the phone shows each on
+// its own clock, so lines change on time rather than when an update gets here.
+function list(v) {
+  if (Array.isArray(v)) return v;
+  if (!v || typeof v !== 'object') return [];
+  const out = [];
+  for (const [k, x] of Object.entries(v)) out[Number(k)] = x;
+  return out;
+}
+
+function onSubs(v) {
+  try {
+    subs = v && v.tl ? {
+      id: v.id,
+      movieId: String(v.movieId),
+      words: list(v.words),
+      lines: list(v.lines).map((l) => (typeof l === 'string' ? JSON.parse(l) : null)),
+      en: JSON.parse(v.en || '[]'),
+      tl: JSON.parse(v.tl),
+    } : null;
+  } catch (e) {
+    subs = null;
+    showError(`Couldn't read the subtitles: ${e.message}`, 5000);
+  }
+  if (preview && (!subs || preview.id !== subs.id)) preview = null;
+  render();
+}
+
+// The subtitles are for the episode playing (not still the last one's), and no review is
+// running (the phone doesn't show reviews: Alex, 2026-11-07, for later).
+function subsReady() {
+  return Boolean(connected() && subs && subs.movieId === String(state.movieId) && !state.review);
+}
+
+// The timeline entry at position `t` (ms): the last that starts at or before it.
+function entryAt(t) {
+  const tl = subs.tl;
+  let lo = 0;
+  let hi = tl.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (tl[mid][0] <= t) {
+      found = mid;
+      lo = mid + 1;
+    } else hi = mid - 1;
+  }
+  return found;
+}
+
+// A subtitle (not a line finishing, not nothing) -> whether entry i is one.
+const isSubtitle = (i) => {
+  const e = subs.tl[i];
+  return Boolean(e) && !e[3] && (e[1].length > 0 || e[2].length > 0);
+};
+
+// The subtitle shown at entry i (a finished line's is the one before it), or -1.
+function subtitleOf(i) {
+  while (i >= 0 && !isSubtitle(i)) i--;
+  return i;
+}
+
+const STATE_NAMES = { k: 'known', u: 'unknown', l: 'learning' };
+
+// What entry i shows: { parts (as the line draws them), en, past, barFrom, next }.
+function entryLine(i) {
+  const e = subs.tl[i];
+  if (!e) return null;
+  const [, ko, en, past, barFrom, next] = e;
+  const parts = [];
+  ko.forEach((k, n) => {
+    const line = subs.lines[k];
+    if (!line) return;
+    if (n) parts.push({ br: 1 });
+    const [start, , ps] = line;
+    for (const p of ps) {
+      if (typeof p === 'string') parts.push({ t: p });
+      else {
+        const [t, wi, k2, i2] = p;
+        const w = subs.words[wi];
+        const s = k2 === 'word' && wordStates.id === subs.id ? STATE_NAMES[wordStates.s[wi]] || 'unknown' : '';
+        parts.push({ t, w, k: k2, s, c: start, i: i2 });
+      }
+    }
+  });
+  const enText = en.map((x) => subs.en[x]?.[2] ?? '').join('\n');
+  if (!parts.length && !enText) return null;
+  return { parts, en: enText, past: Boolean(past), barFrom: barFrom < 0 ? null : barFrom, next: next < 0 ? null : next, c: ko.length ? subs.lines[ko[0]]?.[0] : null };
+}
+
+// --- Preview (Alex, 2026-11-07): the arrows at the sides look through the lines before
+// and after without moving Netflix (it pauses). "Back to now" goes back to the line
+// playing; "Play from here" plays Netflix from the line shown.
+function previewStep(dir) {
+  if (!subsReady()) return;
+  const from = preview ? preview.i : subtitleOf(entryAt(position() ?? 0));
+  let j = from + dir;
+  while (j >= 0 && j < subs.tl.length && !isSubtitle(j)) j += dir;
+  if (j < 0 || j >= subs.tl.length) return;
+  if (!preview && shownPlaying()) {
+    const id = send('playPause');
+    if (id) planPlay(id, false, 'playPause');
+  }
+  preview = { i: j, id: subs.id };
+  const c = entryLine(j)?.c;
+  if (typeof c === 'number') send('preview', { c }); // (the computer looks up its words, ready for a tap)
+  else navigator.vibrate?.(10);
+  render();
+}
+
+function backToNow() {
+  preview = null;
+  render();
+}
+
+function playFromHere() {
+  const line = preview && entryLine(preview.i);
+  if (!line || line.barFrom === null) return;
+  const id = send('playFrom', { ms: line.barFrom });
+  if (!id) return;
+  const now = Date.now();
+  // (From the line's start, though Netflix starts a moment before it: its line is the one
+  // to show, and the difference is eased out when the computer answers.)
+  clock = { ...clock, t: line.barFrom, at: now, playing: false };
+  ease = null;
+  preview = null;
+  planned = { id, kind: 'playFrom', at: now + lagMs, playing: true, sent: now };
+  render();
+}
+
+$('pvPrev').addEventListener('click', () => previewStep(-1));
+$('pvNext').addEventListener('click', () => previewStep(1));
+$('pvBack').addEventListener('click', backToNow);
+$('pvPlay').addEventListener('click', playFromHere);
+
+// The arrows sit at the screen's edges, level with the middle of the space the line is
+// centred in (not the line itself), so they never move as lines change.
+function placeArrows() {
+  const m = $('main').getBoundingClientRect();
+  const top = `${Math.round(m.top + m.height / 2)}px`;
+  for (const id of ['pvPrev', 'pvNext']) $(id).style.top = top;
+}
+window.addEventListener('resize', placeArrows);
+
+// The bar under the subtitle fills from the start of what's shown to the start of the
+// next subtitle, not to the end of this one: the phone keeps a finished line up until the
+// next starts (Alex, 2026-11-07). Hidden with no next subtitle, and while previewing.
+// After ‹ / › here it's empty until the computer answers (the new line starts there).
+function renderNextBar(line, pos) {
+  const ok = line && !preview && line.next !== null && line.barFrom !== null && line.next > line.barFrom && pos !== null;
   $('nextBar').hidden = !ok;
   if (!ok) return;
-  const f = planned?.line === 'start' ? 0 : Math.min(1, Math.max(0, (pos - line.from) / (line.next - line.from)));
+  const f = planned?.line === 'start' ? 0 : Math.min(1, Math.max(0, (pos - line.barFrom) / (line.next - line.barFrom)));
   $('nextFill').style.transform = `scaleX(${f})`;
-  if ((clockMoving() || ease) && f < 1) nextBarFrame = requestAnimationFrame(renderNextBar);
+}
+
+// Every frame while Netflix plays: the next line when its time comes, and the bar.
+function scheduleTick() {
+  cancelAnimationFrame(tickFrame);
+  if (subsReady() && !preview && (clockMoving() || ease)) tickFrame = requestAnimationFrame(tick);
+}
+
+function tick() {
+  if (!subsReady() || preview) return;
+  const pos = position();
+  const i = pos === null ? -1 : entryAt(pos);
+  if (i !== shownEntry) return render(); // (draws it and schedules the next tick)
+  renderNextBar(entryLine(i), pos);
+  scheduleTick();
 }
 
 function renderSeek() {
@@ -573,16 +747,18 @@ function render() {
   const playing = Boolean(live && shownPlaying());
   $('play').classList.toggle('playing', playing);
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
-  const line = live ? state.line : null;
   $('waiting').hidden = live;
   $('now').hidden = !live;
   $('title').textContent = (live && state.title) || '';
   $('title').hidden = !live || !state.title;
   renderMulti();
 
-  if (line?.key !== shownLineKey) {
-    shownLineKey = line?.key ?? null;
-  }
+  const ready = subsReady();
+  if (!ready) preview = null;
+  const pos = ready ? position() : null;
+  shownEntry = ready ? (preview ? preview.i : pos === null ? -1 : entryAt(pos)) : null;
+  const line = ready && shownEntry >= 0 ? entryLine(shownEntry) : null;
+  const past = Boolean(line?.past && !preview);
   const el = $('line');
   el.textContent = '';
   for (const p of line?.parts || []) {
@@ -598,20 +774,29 @@ function render() {
       el.append(b, space);
     }
   }
-  if (live && !line) el.append(make('span', 'muted', 'No subtitle right now.'));
-  // The extension keeps the last line up between lines (line.past), so its words can still
-  // be marked: say so, and dim it a little.
-  $('pastTag').hidden = !line?.past;
-  $('now').classList.toggle('past', Boolean(line?.past));
+  if (live && !line) {
+    const why = state.review ? 'A review is running on the computer. The phone doesn\'t show reviews yet.'
+      : !ready ? 'Loading subtitles…' : 'No subtitle right now.';
+    el.append(make('span', 'muted', why));
+  }
+  // A finished line stays up until the next (line.past), so its words can still be
+  // marked: say so, and dim it a little. While previewing, say that instead.
+  $('pastTag').textContent = preview ? '(preview: Netflix stays where it is)' : '(subtitle finished)';
+  $('pastTag').hidden = !(past || preview);
+  $('now').classList.toggle('past', past);
   const en = $('en');
   en.textContent = line?.en || '';
   en.hidden = !line?.en;
   // Never blurred on the phone, even when the TV blurs it (Alex, 2026-11-04).
+  renderNextBar(line, pos);
+  for (const id of ['pvPrev', 'pvNext']) $(id).hidden = !ready;
+  $('previewBar').hidden = !preview;
+  placeArrows();
 
   renderPanel(live);
   renderSeek();
-  renderNextBar();
   renderVolume();
+  scheduleTick();
 }
 
 function renderPanel(live) {

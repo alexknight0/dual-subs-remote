@@ -51,22 +51,23 @@ STATE = {
     "d": 3720000,
     "v": 0.8,
     "m": False,
-    "line": {
-        "key": "36000",
-        "parts": [
-            {"t": "나", "w": "나", "k": "word", "s": "known", "c": 36000, "i": 0},
-            {"t": "한테 "},
-            {"t": "장난친 ", "w": "장난치다", "k": "word", "s": "learning", "c": 36000, "i": 4},
-            {"t": "적 ", "w": "적", "k": "word", "s": "unknown", "c": 36000, "i": 8},
-            {"t": "있니", "w": "있다", "k": "word", "s": "known", "c": 36000, "i": 10},
-            {"t": "?"},
-        ],
-        "en": "Have you ever tricked me?",
-        "hidden": True,
-        "from": 599000,
-        "next": 609000,
-    },
 }
+# The episode's lines (the extension's lib.phoneTimeline): "나한테 장난친 적 있니?" from
+# 599 s to 602 s, kept up (finished) until "다음 줄이야" at 609 s, the last line. (Its line
+# start 36000 is what taps send back as c.)
+SUBS = {
+    "id": "1:100",
+    "movieId": "1",
+    "words": ["나", "장난치다", "적", "있다"],
+    "lines": [
+        json.dumps([36000, 39000, [["나", 0, "word", 0], "한테 ", ["장난친 ", 1, "word", 4], ["적 ", 2, "word", 8], ["있니", 3, "word", 10], "?"]], ensure_ascii=False),
+        json.dumps([609000, 611000, ["다음 줄이야"]], ensure_ascii=False),
+    ],
+    "en": json.dumps([[599000, 602000, "Have you ever tricked me?"], [609000, 611000, "Next line"]]),
+    "tl": json.dumps([[0, [], [], 0, -1, 599000], [599000, [0], [0], 0, 599000, 609000],
+                      [602000, [0], [0], 1, 599000, 609000], [609000, [1], [1], 0, 609000, -1], [611000, [1], [1], 1, 609000, -1]]),
+}
+WORD_STATES = {"id": "1:100", "s": "kluk"}
 PANEL = {
     "word": "적", "form": "적", "kind": "word", "state": "unknown", "c": 36000, "i": 8,
     "link": "https://alexknight0.github.io/korean-dict/#w=%EC%A0%81",
@@ -81,6 +82,15 @@ PANEL = {
 }
 
 failed = []
+
+
+def wait_for_js(page, expr, ms):
+    """Whether expr becomes true within ms."""
+    try:
+        page.wait_for_function(expr, timeout=ms)
+        return True
+    except Exception:
+        return False
 
 
 def check(name, ok, detail=""):
@@ -135,7 +145,11 @@ def main():
 
         print("2/4: the line on screen")
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
+        check("until the episode's lines arrive: 'Loading subtitles…'", page.text_content("#line") == "Loading subtitles…", page.text_content("#line"))
+        page.evaluate(f"window.__push('remote/u1/subs', {json.dumps(SUBS, ensure_ascii=False)})")
+        page.evaluate(f"window.__push('remote/u1/wordStates', {json.dumps(WORD_STATES)})")
         check("line shown", page.text_content("#line") == "나한테 장난친 적 있니?", page.text_content("#line"))
+        check("...with its English", page.text_content("#en") == "Have you ever tricked me?", page.text_content("#en"))
         gap = page.evaluate("""(() => { const [a, b] = [...document.querySelectorAll('#line .w')].slice(1, 3).map((e) => e.getBoundingClientRect()); return b.left - a.right; })()""")
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
@@ -159,11 +173,9 @@ def main():
         check("...and still while paused", page.evaluate(FILL) == fp and 0.05 < fp < 0.25, (fp, page.evaluate(FILL)))
         LINE_TOP = "document.getElementById('line').getBoundingClientRect().top"
         top_now = page.evaluate(LINE_TOP)
-        last = json.loads(json.dumps(STATE))
-        last["line"]["next"] = None
-        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(last, ensure_ascii=False)})")
-        check("no next subtitle: no bar, and the line doesn't move", page.is_hidden("#nextBar")
-              and abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
+        push(STATE | {"t": 609500, "playing": False})
+        check("the last line: no next subtitle, so no bar, and the line doesn't move", page.text_content("#line") == "다음 줄이야"
+              and page.is_hidden("#nextBar") and abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (page.text_content("#line"), top_now, page.evaluate(LINE_TOP)))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
         check("title shown", "Nine Tailed" in page.text_content("#title"))
         t_top, c_bottom = page.evaluate("[document.getElementById('title').getBoundingClientRect().top, document.getElementById('chips').getBoundingClientRect().bottom]")
@@ -184,9 +196,10 @@ def main():
         check("English never blurred on the phone", "blurred" not in (page.get_attribute("#en", "class") or ""))
         check("a current line has no 'finished' tag", page.is_hidden("#pastTag"))
         top_now = page.evaluate(LINE_TOP)
-        past = json.loads(json.dumps(STATE))
-        past["line"]["past"] = True
-        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
+        push(STATE | {"t": 601700})
+        check("a line finishes on the phone's own clock, with no update from the computer",
+              wait_for_js(page, "document.getElementById('now').classList.contains('past')", 1500)
+              and page.text_content("#line") == "나한테 장난친 적 있니?")
         check("...without moving the line", abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
         tag_top, bar_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('nextBar').getBoundingClientRect().bottom]")
         check("...with the tag under the subtitle and its bar", 0 <= tag_top - bar_bottom < 24, (tag_top, bar_bottom))
@@ -194,9 +207,51 @@ def main():
         check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "finished" in page.text_content("#pastTag")
               and "past" in page.get_attribute("#now", "class"))
         check("...and its words can still be tapped", page.locator("#line .w").count() == 4)
+        push(STATE | {"t": 608500})
+        check("...and the next line comes up when it starts, on the phone's own clock", wait_for_js(page,
+              "document.getElementById('line').textContent === '다음 줄이야'", 2000) and page.is_hidden("#pastTag"), page.text_content("#line"))
+        push(STATE | {"review": True})
+        check("during a review: no lines, and says why", "review is running" in page.text_content("#line")
+              and page.is_hidden("#en") and page.is_hidden("#nextBar") and page.is_hidden("#pvPrev"), page.text_content("#line"))
+        push(STATE | {"movieId": "2"})
+        check("another episode: loading until its lines arrive", page.text_content("#line") == "Loading subtitles…", page.text_content("#line"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
         page.click("#en")
         check("...without sending anything", sent() == [], sent())
+
+        # Preview (Alex, 2026-11-07): look through the lines without moving Netflix.
+        push(STATE)
+        ARROWS = "['pvPrev', 'pvNext'].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right)]; })"
+        arrows = page.evaluate(ARROWS)
+        check("preview arrows at the screen's far left and right", page.is_visible("#pvPrev") and page.is_visible("#pvNext")
+              and arrows[0][0] == 0 and arrows[1][2] == 390, arrows)
+        n0 = len(sent())
+        page.click("#pvNext")
+        check("› previews the next line, without moving Netflix: pauses it and asks for the line's words to be looked up",
+              page.text_content("#line") == "다음 줄이야" and [x["type"] for x in sent()[n0:]] == ["playPause", "preview"]
+              and sent()[-1]["c"] == 609000 and "playing" not in page.get_attribute("#play", "class"), (page.text_content("#line"), sent()[n0:]))
+        check("...saying it's a preview, with Back to now and Play from here; no bar", page.is_visible("#previewBar")
+              and "preview" in page.text_content("#pastTag") and page.is_hidden("#nextBar")
+              and "past" not in (page.get_attribute("#now", "class") or ""), page.text_content("#pastTag"))
+        check("...and the arrows haven't moved", page.evaluate(ARROWS) == arrows, page.evaluate(ARROWS))
+        page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote-preview.png"))
+        page.click("#pvNext")
+        check("...› on the last line stays there", page.text_content("#line") == "다음 줄이야")
+        push(STATE | {"playing": False}, ack=sent()[-1]["id"])
+        check("...and an update from the computer doesn't end the preview", page.text_content("#line") == "다음 줄이야" and page.is_visible("#previewBar"))
+        page.click("#pvPrev")
+        check("‹ goes back a line", page.text_content("#line") == "나한테 장난친 적 있니?" and page.is_visible("#previewBar"), page.text_content("#line"))
+        page.click("#pvBack")
+        check("Back to now: the line playing, preview over", page.text_content("#line") == "나한테 장난친 적 있니?" and page.is_hidden("#previewBar")
+              and page.is_visible("#nextBar"), page.text_content("#line"))
+        page.click("#pvNext")
+        page.click("#pvPlay")
+        check("Play from here: plays Netflix from that line", sent()[-1]["type"] == "playFrom" and sent()[-1]["ms"] == 609000
+              and page.text_content("#line") == "다음 줄이야" and "playing" in page.get_attribute("#play", "class")
+              and page.is_hidden("#previewBar"), (sent()[-1], page.text_content("#line")))
+        push(STATE | {"t": 608900}, ack=sent()[-1]["id"])
+        check("...and stays on it when the computer answers", page.text_content("#line") == "다음 줄이야", page.text_content("#line"))
+        push(STATE)
 
         print("3/4: controls")
         for btn, kind in (("#play", "playPause"), ("#prev", "prev"), ("#next", "next")):
