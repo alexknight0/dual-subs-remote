@@ -63,9 +63,10 @@ SUBS = {
         json.dumps([36000, 39000, [["나", 0, "word", 0], "한테 ", ["장난친 ", 1, "word", 4], ["적 ", 2, "word", 8], ["있니", 3, "word", 10], "?"]], ensure_ascii=False),
         json.dumps([609000, 611000, ["다음 줄이야"]], ensure_ascii=False),
     ],
-    "en": json.dumps([[599000, 602000, "Have you ever tricked me?"], [609000, 611000, "Next line"]]),
-    "tl": json.dumps([[0, [], [], 0, -1, 599000], [599000, [0], [0], 0, 599000, 609000],
-                      [602000, [0], [0], 1, 599000, 609000], [609000, [1], [1], 0, 609000, -1], [611000, [1], [1], 1, 609000, -1]]),
+    "en": json.dumps([[599000, 602000, "Have you ever tricked me?"], [609000, 611000, "Next line"],
+                      [599000, 602000, "PROSECUTOR GENERAL\nCHOI SEUNG-HO"]]),  # (a name card: a caption)
+    "tl": json.dumps([[0, [], [], 0, -1, 599000, []], [599000, [0], [0], 0, 599000, 609000, [2]],
+                      [602000, [0], [0], 1, 599000, 609000, []], [609000, [1], [1], 0, 609000, -1, []], [611000, [1], [1], 1, 609000, -1, []]]),
 }
 WORD_STATES = {"id": "1:100", "s": "kluk"}
 PANEL = {
@@ -150,6 +151,9 @@ def main():
         page.evaluate(f"window.__push('remote/u1/wordStates', {json.dumps(WORD_STATES)})")
         check("line shown", page.text_content("#line") == "나한테 장난친 적 있니?", page.text_content("#line"))
         check("...with its English", page.text_content("#en") == "Have you ever tricked me?", page.text_content("#en"))
+        cap_top, now_bottom = page.evaluate("[document.getElementById('cap').getBoundingClientRect().top, document.getElementById('now').getBoundingClientRect().bottom]")
+        check("...and a name card on screen as a caption under it all (out of the flow: the line doesn't move)", page.is_visible("#cap")
+              and page.inner_text("#cap") == "PROSECUTOR GENERAL\nCHOI SEUNG-HO" and cap_top >= now_bottom, (page.inner_text("#cap"), cap_top, now_bottom))
         gap = page.evaluate("""(() => { const [a, b] = [...document.querySelectorAll('#line .w')].slice(1, 3).map((e) => e.getBoundingClientRect()); return b.left - a.right; })()""")
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")

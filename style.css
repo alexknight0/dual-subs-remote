@@ -795,7 +795,24 @@ body:has(#panel:not([hidden])) #chips {
   visibility: hidden;
 }
 
+/* Captions: quieter than the English, like on the computer. */
+.cap {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  white-space: pre-line;
+  color: #cfcfcf;
+  opacity: 0.85;
+}
+
+body:has(#panel:not([hidden])) .cap {
+  display: none;
+}
+
 #now.past .line,
+#now.past .cap,
 #now.past .en {
   opacity: 0.8;
 }
@@ -968,11 +985,14 @@ body:has(#panel:not([hidden])) .pv-arrow {
 
 /* "Back to now" / "Play from here" under a previewed line, out of the flow so the line
    doesn't move. */
-.preview-bar {
+.below {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
+}
+
+.preview-bar {
   display: flex;
   justify-content: center;
   gap: 10px;

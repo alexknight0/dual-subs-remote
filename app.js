@@ -442,7 +442,7 @@ function entryAt(t) {
 // A subtitle (not a line finishing, not nothing) -> whether entry i is one.
 const isSubtitle = (i) => {
   const e = subs.tl[i];
-  return Boolean(e) && !e[3] && (e[1].length > 0 || e[2].length > 0);
+  return Boolean(e) && !e[3] && (e[1].length > 0 || e[6].length > 0);
 };
 
 // The subtitle shown at entry i (a finished line's is the one before it), or -1.
@@ -453,11 +453,11 @@ function subtitleOf(i) {
 
 const STATE_NAMES = { k: 'known', u: 'unknown', l: 'learning' };
 
-// What entry i shows: { parts (as the line draws them), en, past, barFrom, next }.
+// What entry i shows: { parts (as the line draws them), en, cap (captions), past, barFrom, next }.
 function entryLine(i) {
   const e = subs.tl[i];
   if (!e) return null;
-  const [, ko, en, past, barFrom, next] = e;
+  const [, ko, en, past, barFrom, next, cap] = e;
   const parts = [];
   ko.forEach((k, n) => {
     const line = subs.lines[k];
@@ -475,8 +475,9 @@ function entryLine(i) {
     }
   });
   const enText = en.map((x) => subs.en[x]?.[2] ?? '').join('\n');
-  if (!parts.length && !enText) return null;
-  return { parts, en: enText, past: Boolean(past), barFrom: barFrom < 0 ? null : barFrom, next: next < 0 ? null : next, c: ko.length ? subs.lines[ko[0]]?.[0] : null };
+  const capText = cap.map((x) => subs.en[x]?.[2] ?? '').join('\n');
+  if (!parts.length && !enText && !capText) return null;
+  return { parts, en: enText, cap: capText, past: Boolean(past), barFrom: barFrom < 0 ? null : barFrom, next: next < 0 ? null : next, c: ko.length ? subs.lines[ko[0]]?.[0] : null };
 }
 
 // --- Preview (Alex, 2026-11-07): the arrows at the sides look through the lines before
@@ -802,6 +803,8 @@ function render() {
   const en = $('en');
   en.textContent = line?.en || '';
   en.hidden = !line?.en;
+  $('cap').textContent = line?.cap || '';
+  $('cap').hidden = !line?.cap;
   // Never blurred on the phone, even when the TV blurs it (Alex, 2026-11-04).
   renderNextBar(line, pos);
   for (const id of ['pvPrev', 'pvNext']) $(id).hidden = !ready;

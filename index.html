@@ -63,10 +63,16 @@
         <!-- Under the subtitle (Alex, 2026-11-04). It keeps its space when hidden, so the
              line doesn't move when a subtitle finishes. -->
         <p id="pastTag" class="past-tag" hidden>(subtitle finished)</p>
-        <!-- While previewing (out of the flow, so the line doesn't move). -->
+        <!-- Out of the flow under it all, so the line doesn't move: captions (Alex, 2026-11-08:
+             English that is no Korean line's translation, such as a name card, a sign or
+             speech the Korean subtitles leave out, as on the computer), then while
+             previewing, its buttons. -->
+        <div class="below">
+        <p id="cap" class="cap" hidden></p>
         <div id="previewBar" class="preview-bar" hidden>
           <button id="pvBack" type="button">Back to now</button>
           <button id="pvPlay" type="button">Play from here</button>
+        </div>
         </div>
       </div>
 
