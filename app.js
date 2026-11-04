@@ -223,6 +223,22 @@ function position() {
   return Math.min(pos, state.d || pos);
 }
 
+// The bar under the subtitle fills from the start of what's shown (line.from) to the start
+// of the next subtitle (line.next), not to the end of this one: the phone keeps a finished
+// line up until the next starts (Alex, 2026-11-07). Hidden with no next subtitle.
+let nextBarFrame = 0;
+function renderNextBar() {
+  cancelAnimationFrame(nextBarFrame);
+  const line = connected() ? state.line : null;
+  const pos = position();
+  const ok = line && typeof line.next === 'number' && typeof line.from === 'number' && line.next > line.from && pos !== null;
+  $('nextBar').hidden = !ok;
+  if (!ok) return;
+  const f = Math.min(1, Math.max(0, (pos - line.from) / (line.next - line.from)));
+  $('nextFill').style.transform = `scaleX(${f})`;
+  if (state.playing && f < 1) nextBarFrame = requestAnimationFrame(renderNextBar);
+}
+
 function renderSeek() {
   const d = connected() ? state.d : null;
   $('seekBtn').hidden = !d;
@@ -407,10 +423,6 @@ function render() {
   // The buttons only make sense with Netflix on the other end.
   $('dock').hidden = !live;
   $('chips').hidden = !live;
-  // Under the title while connected; on its own in the title's place when not.
-  // Playing / Paused above the subtitle. Nothing when not connected: the message in the
-  // middle of the screen says so.
-  $('status').textContent = live ? (state.playing ? 'Playing' : 'Paused') : '';
   const playing = Boolean(live && state.playing);
   $('play').classList.toggle('playing', playing);
   $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
@@ -451,6 +463,7 @@ function render() {
 
   renderPanel(live);
   renderSeek();
+  renderNextBar();
   renderVolume();
 }
 

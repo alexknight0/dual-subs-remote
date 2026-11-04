@@ -53,9 +53,12 @@
         Open a Netflix episode on your computer (signed in to Dual Subs with the same account).
       </div>
       <div id="now" hidden>
-        <p id="status" class="play-state"></p>
         <div id="line" class="line"></div>
         <button id="en" class="en" type="button"></button>
+        <!-- Time until the next subtitle starts (Alex, 2026-11-07: replaced the Playing /
+             Paused text), so you know whether there's time to tap a word. Keeps its space
+             when hidden, so the line doesn't move. -->
+        <div id="nextBar" class="next-bar" hidden><div id="nextFill" class="next-fill"></div></div>
         <!-- Under the subtitle (Alex, 2026-11-04). It keeps its space when hidden, so the
              line doesn't move when a subtitle finishes. -->
         <p id="pastTag" class="past-tag" hidden>(subtitle finished)</p>

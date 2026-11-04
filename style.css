@@ -832,16 +832,31 @@ body:has(#panel:not([hidden])) #title {
   display: none;
 }
 
-/* Playing / Paused above the subtitle (Alex, 2026-11-04). */
-.play-state {
-  margin: 0 0 10px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--muted);
+/* Time until the next subtitle starts (line.from -> line.next), under the subtitle
+   (Alex, 2026-11-07). Filled by tickNextBar; keeps its space when hidden. */
+.next-bar {
+  height: 6px;
+  margin: 16px auto 0;
+  width: min(100%, 320px);
+  border-radius: 3px;
+  background: #2c2c2c;
+  overflow: hidden;
+}
+
+.next-bar[hidden] {
+  display: block !important; /* beats the global [hidden] rule: keep the space */
+  visibility: hidden;
+}
+
+.next-fill {
+  height: 100%;
+  background: #8a8a8a;
+  transform-origin: left;
+  transform: scaleX(0);
 }
 
 /* With a word open these give the room to the panel. */
-body:has(#panel:not([hidden])) .play-state,
+body:has(#panel:not([hidden])) .next-bar,
 body:has(#panel:not([hidden])) .past-tag {
   display: none;
 }

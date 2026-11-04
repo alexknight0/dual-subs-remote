@@ -63,6 +63,8 @@ STATE = {
         ],
         "en": "Have you ever tricked me?",
         "hidden": True,
+        "from": 599000,
+        "next": 609000,
     },
 }
 PANEL = {
@@ -133,11 +135,30 @@ def main():
         check("spaces between words are kept", gap > 3, gap)
         classes = page.eval_on_selector_all("#line .w", "els => els.map((e) => e.className)")
         check("words coloured by state", classes == ["w known", "w learning", "w unknown", "w known"], classes)
-        st_bottom, line_top = page.evaluate("[document.getElementById('status').getBoundingClientRect().bottom, document.getElementById('line').getBoundingClientRect().top]")
-        check("Playing / Paused just above the subtitle", 0 <= line_top - st_bottom < 24 and page.locator("header #status").count() == 0, (st_bottom, line_top))
-        check("status shows playing", page.text_content("#status") == "Playing"
-              and "playing" in page.get_attribute("#play", "class") and page.is_visible("#play .i-pause")
-              and page.is_hidden("#play .i-play"))
+        check("no Playing / Paused text", page.locator("#status").count() == 0)
+        check("the play button shows playing", "playing" in page.get_attribute("#play", "class")
+              and page.is_visible("#play .i-pause") and page.is_hidden("#play .i-play"))
+        FILL = "new DOMMatrix(getComputedStyle(document.getElementById('nextFill')).transform).a"
+        f0 = page.evaluate(FILL)
+        check("bar to the next subtitle shown, about 10% along (1 s of 10)", page.is_visible("#nextBar") and 0.05 < f0 < 0.2, f0)
+        bar_top, en_bottom = page.evaluate("[document.getElementById('nextBar').getBoundingClientRect().top, document.getElementById('en').getBoundingClientRect().bottom]")
+        check("...under the subtitle", 0 <= bar_top - en_bottom < 24, (bar_top, en_bottom))
+        page.wait_for_timeout(1000)
+        f1 = page.evaluate(FILL)
+        check("...filling up while playing", 0.07 < f1 - f0 < 0.2, (f0, f1))
+        page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote-bar.png"))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'playing': False}, ensure_ascii=False)})")
+        fp = page.evaluate(FILL)
+        page.wait_for_timeout(500)
+        check("...and still while paused", page.evaluate(FILL) == fp and 0.05 < fp < 0.2, (fp, page.evaluate(FILL)))
+        LINE_TOP = "document.getElementById('line').getBoundingClientRect().top"
+        top_now = page.evaluate(LINE_TOP)
+        last = json.loads(json.dumps(STATE))
+        last["line"]["next"] = None
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(last, ensure_ascii=False)})")
+        check("no next subtitle: no bar, and the line doesn't move", page.is_hidden("#nextBar")
+              and abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
+        page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE, ensure_ascii=False)})")
         check("title shown", "Nine Tailed" in page.text_content("#title"))
         t_top, c_bottom = page.evaluate("[document.getElementById('title').getBoundingClientRect().top, document.getElementById('chips').getBoundingClientRect().bottom]")
         check("...under the volume and position chips", 0 <= t_top - c_bottom < 12, (t_top, c_bottom))
@@ -156,14 +177,13 @@ def main():
         check("line centred vertically", abs(off) < 40, (top, off))
         check("English never blurred on the phone", "blurred" not in (page.get_attribute("#en", "class") or ""))
         check("a current line has no 'finished' tag", page.is_hidden("#pastTag"))
-        LINE_TOP = "document.getElementById('line').getBoundingClientRect().top"
         top_now = page.evaluate(LINE_TOP)
         past = json.loads(json.dumps(STATE))
         past["line"]["past"] = True
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(past, ensure_ascii=False)})")
         check("...without moving the line", abs(page.evaluate(LINE_TOP) - top_now) < 0.5, (top_now, page.evaluate(LINE_TOP)))
-        tag_top, en_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('en').getBoundingClientRect().bottom]")
-        check("...with the tag under the subtitle", 0 <= tag_top - en_bottom < 24, (tag_top, en_bottom))
+        tag_top, bar_bottom = page.evaluate("[document.getElementById('pastTag').getBoundingClientRect().top, document.getElementById('nextBar').getBoundingClientRect().bottom]")
+        check("...with the tag under the subtitle and its bar", 0 <= tag_top - bar_bottom < 24, (tag_top, bar_bottom))
         check("...reading '(subtitle finished)'", page.text_content("#pastTag") == "(subtitle finished)", page.text_content("#pastTag"))
         check("a finished line is tagged and dimmed", page.is_visible("#pastTag") and "finished" in page.text_content("#pastTag")
               and "past" in page.get_attribute("#now", "class"))
