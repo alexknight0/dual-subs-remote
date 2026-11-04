@@ -543,6 +543,21 @@ function renderNextBar(line, pos) {
   if (!ok) return;
   const f = planned?.line === 'start' ? 0 : Math.min(1, Math.max(0, (pos - line.barFrom) / (line.next - line.barFrom)));
   $('nextFill').style.transform = `scaleX(${f})`;
+  renderTicks(line.next - line.barFrom);
+}
+
+// Marks every second, bigger every 5 s. The 1 s marks stay until they're nearly touching
+// (a dense bar reads as a long wait); past that (over ~100 s) every 5 s / 30 s, then
+// 30 s / 5 min.
+const TICK_STEPS = [[1, 5], [5, 30], [30, 300]];
+const MIN_TICK_GAP_PX = 3;
+function renderTicks(spanMs) {
+  const el = $('nextTicks');
+  const pxPerS = ($('nextBar').clientWidth * 1000) / spanMs;
+  const [minor, major] = TICK_STEPS.find(([s]) => s * pxPerS >= MIN_TICK_GAP_PX) ?? TICK_STEPS.at(-1);
+  const px = (s) => `${(s * pxPerS).toFixed(2)}px`;
+  el.style.setProperty('--minor', px(minor));
+  el.style.setProperty('--major', px(major));
 }
 
 // Every frame while Netflix plays: the next line when its time comes, and the bar.

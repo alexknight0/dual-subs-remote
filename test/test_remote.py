@@ -165,6 +165,9 @@ def main():
         page.wait_for_timeout(1000)
         f1 = page.evaluate(FILL)
         check("...filling up while playing", 0.07 < f1 - f0 < 0.2, (f0, f1))
+        ticks = page.evaluate("(() => { const s = document.getElementById('nextTicks').style; return [parseFloat(s.getPropertyValue('--minor')), parseFloat(s.getPropertyValue('--major')), document.getElementById('nextBar').clientWidth]; })()")
+        check("...marked every second, more every 5 s (a 10th / half of a 10 s bar)",
+              abs(ticks[0] - ticks[2] / 10) < 0.02 and abs(ticks[1] - ticks[2] / 2) < 0.02, ticks)
         page.screenshot(path=str(pathlib.Path.home() / ".tmp" / "dual-subs-remote-bar.png"))
         page.evaluate(f"window.__push('remote/u1/state', {json.dumps(STATE | {'playing': False}, ensure_ascii=False)})")
         page.wait_for_timeout(500)  # (a small correction is eased out over 0.4 s)
