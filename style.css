@@ -858,7 +858,7 @@ body:has(#panel:not([hidden])) #title {
 
 /* Time marks over the bar (Alex, 2026-11-08: see at a glance whether it's long or
    short), counted from the bar's start, in the page colour: small notches at the top and
-   bottom every --minor (1 s) and a cut right through every --major (5 s). The sizes are
+   bottom every --minor (0.5 s) and a cut right through every --major (5 s). The sizes are
    in px, set by renderTicks. Each mark sits at the end of its tile, and the layer stops
    3 px short of the bar's end, so no mark clips either rounded end. */
 .next-ticks {

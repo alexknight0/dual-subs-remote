@@ -546,10 +546,10 @@ function renderNextBar(line, pos) {
   renderTicks(line.next - line.barFrom);
 }
 
-// Marks every second, bigger every 5 s. The 1 s marks stay until they're nearly touching
-// (a dense bar reads as a long wait); past that (over ~100 s) every 5 s / 30 s, then
-// 30 s / 5 min.
-const TICK_STEPS = [[1, 5], [5, 30], [30, 300]];
+// Marks every half second (Alex, 2026-11-08: more frequent than every second), bigger
+// every 5 s. They stay until they're nearly touching (a dense bar reads as a long wait);
+// past that (over ~50 s) every 1 s / 5 s, then 5 s / 30 s, then 30 s / 5 min.
+const TICK_STEPS = [[0.5, 5], [1, 5], [5, 30], [30, 300]];
 const MIN_TICK_GAP_PX = 3;
 function renderTicks(spanMs) {
   const el = $('nextTicks');
