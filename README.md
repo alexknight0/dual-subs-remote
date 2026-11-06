@@ -1,6 +1,6 @@
-# Dual Subs remote
+# Smarter Subtitles remote
 
-Phone remote for the Netflix Dual Subs Chrome extension: play/pause, jump between
+Phone remote for the Smarter Subtitles Chrome extension: play/pause, jump between
 subtitle lines, show the English on the TV, and tap words to look them up, mark them
 or ask AI about them while Netflix plays on the computer (e.g. cast to a TV).
 

@@ -1,4 +1,4 @@
-// Phone remote for the Netflix Dual Subs extension. The extension (on the computer
+// Phone remote for the Smarter Subtitles extension. The extension (on the computer
 // playing Netflix) mirrors what's on screen into Firebase Realtime Database
 // /remote/{uid}/state and /panel; this page shows them and writes commands to
 // /remote/{uid}/command, which the extension watches (src/remote.js in the extension

@@ -1,6 +1,6 @@
 {
   "id": "/dual-subs-remote/",
-  "name": "Dual Subs remote",
+  "name": "Smarter Subtitles remote",
   "short_name": "Subs remote",
   "start_url": "./",
   "scope": "./",
